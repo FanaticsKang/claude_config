@@ -1,0 +1,8 @@
+ide/
+plugins/
+projects/
+shell-snapshots/
+statsig/
+todos/
+.update.lock
+history.jsonl
