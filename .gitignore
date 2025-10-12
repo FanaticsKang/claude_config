@@ -6,3 +6,6 @@ statsig/
 todos/
 .update.lock
 history.jsonl
+file-history/
+.credentials.json
+debug/
