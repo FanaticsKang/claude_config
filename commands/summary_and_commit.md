@@ -1,7 +1,34 @@
-# summary the change by git diff and commit these change
+# 总结Git更改并提交
 
-1. 通过git diff读取当前的修改；
-2. 通过是否存在`--full`判断总结内容：
-   - 存在`--full`则总结所有git diff的内容；
-   - 不存在`--full`总结除了`.gitignore`以外的所有文件；
-3. 通过git add .和 git commit提交，并提交总结。
+分析自上次提交以来的Git更改，并使用自动生成的摘要进行提交。
+
+## 使用方法
+
+```
+/summary_and_commit [--full]
+```
+
+## 选项
+
+- `--full`: 在摘要中包含所有文件，包括.gitignore文件的更改
+- (无标志): 在摘要中排除.gitignore文件的更改
+
+## 执行步骤
+
+1. 使用 `git status --porcelain` 检查是否有待提交的更改
+2. 使用 `git diff HEAD` 获取自上次提交以来的所有更改
+3. 从命令参数中解析 `--full` 标志
+4. 生成更改摘要：
+   - 如果存在 `--full` 标志：总结所有更改，包括.gitignore文件
+   - 如果不存在 `--full` 标志：总结更改，但排除.gitignore文件的更改
+5. 使用 `git add .` 暂存所有更改
+6. 使用生成的摘要消息提交更改
+7. 显示最终的git状态以确认提交成功
+
+## 实现细节
+
+- 检查是否存在未提交的更改
+- 根据是否使用--full参数决定是否过滤.gitignore文件的更改
+- 生成简洁但描述性的提交消息
+- 执行git add和git commit操作
+- 确认提交操作成功完成
