@@ -9,3 +9,9 @@ history.jsonl
 file-history/
 .credentials.json
 debug/
+backups/
+plans/
+telemetry/
+backups/
+cache/
+
