@@ -48,4 +48,7 @@ fi
 
 # 使用 /summary_and_commit 提交
 echo "正在执行 /summary_and_commit 提交变更..."
-exec claude "/summary_and_commit"
+claude --permission-mode dontAsk --output-format text -p "/summary_and_commit"
+
+echo ""
+echo "=== 提交完成 ==="
