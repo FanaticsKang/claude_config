@@ -1,0 +1,23 @@
+{
+  "skill_name": "json_analysis",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我分析一下 /tmp/test_data/users.json 这个文件，生成一份格式说明文档",
+      "expected_output": "生成一个 markdown 文件，包含 JSON 的层级结构树和字段详细说明",
+      "files": ["test_data/users.json"]
+    },
+    {
+      "id": 2,
+      "prompt": "分析这个大 JSON 文件的结构并输出说明文档：/data/large_dataset.json (约 150MB)",
+      "expected_output": "使用流式读取方式分析大文件，生成包含字段类型、示例值、必填标记的 markdown 文档",
+      "files": ["test_data/large_dataset.json"]
+    },
+    {
+      "id": 3,
+      "prompt": "解析 api_response.json 的结构，我需要了解它的字段组成和数据类型",
+      "expected_output": "生成层级树状结构的文档，包含每个字段的类型推断和示例值",
+      "files": ["test_data/api_response.json"]
+    }
+  ]
+}
