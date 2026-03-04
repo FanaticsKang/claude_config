@@ -11,6 +11,7 @@ CLAUDE_DIR="$HOME/.claude"
 LOCAL_AGENTS="$SCRIPT_DIR/agents"
 LOCAL_COMMANDS="$SCRIPT_DIR/commands"
 LOCAL_SKILLS="$SCRIPT_DIR/skills"
+LOCAL_CLAUDE_MD="$SCRIPT_DIR/CLAUDE.md"
 
 echo "=== 安装本地文件到 ~/.claude ==="
 
@@ -33,6 +34,12 @@ if [ -d "$LOCAL_SKILLS" ]; then
     echo "[skills] 安装中..."
     mkdir -p "$CLAUDE_DIR/skills"
     rsync -av --delete "$LOCAL_SKILLS/" "$CLAUDE_DIR/skills/"
+fi
+
+# 安装 CLAUDE.md
+if [ -f "$LOCAL_CLAUDE_MD" ]; then
+    echo "[CLAUDE.md] 安装中..."
+    cp "$LOCAL_CLAUDE_MD" "$CLAUDE_DIR/CLAUDE.md"
 fi
 
 echo ""

@@ -12,6 +12,7 @@ CLAUDE_DIR="$HOME/.claude"
 LOCAL_AGENTS="$SCRIPT_DIR/agents"
 LOCAL_COMMANDS="$SCRIPT_DIR/commands"
 LOCAL_SKILLS="$SCRIPT_DIR/skills"
+LOCAL_CLAUDE_MD="$SCRIPT_DIR/CLAUDE.md"
 
 echo "=== 同步 ~/.claude 到本地目录 ==="
 
@@ -34,6 +35,12 @@ if [ -d "$CLAUDE_DIR/skills" ]; then
     echo "[skills] 同步中..."
     mkdir -p "$LOCAL_SKILLS"
     rsync -av --delete "$CLAUDE_DIR/skills/" "$LOCAL_SKILLS/"
+fi
+
+# 同步 CLAUDE.md
+if [ -f "$CLAUDE_DIR/CLAUDE.md" ]; then
+    echo "[CLAUDE.md] 同步中..."
+    cp "$CLAUDE_DIR/CLAUDE.md" "$LOCAL_CLAUDE_MD"
 fi
 
 echo ""
