@@ -12,7 +12,7 @@ CLAUDE_DIR="$HOME/.claude"
 LOCAL_AGENTS="$SCRIPT_DIR/agents"
 LOCAL_COMMANDS="$SCRIPT_DIR/commands"
 LOCAL_SKILLS="$SCRIPT_DIR/skills"
-LOCAL_CLAUDE_MD="$SCRIPT_DIR/CLAUDE.md"
+LOCAL_CLAUDE_MD="$SCRIPT_DIR/claude_md_files/CLAUDE.md"
 
 echo "=== 同步 ~/.claude 到本地目录 ==="
 
@@ -40,6 +40,7 @@ fi
 # 同步 CLAUDE.md
 if [ -f "$CLAUDE_DIR/CLAUDE.md" ]; then
     echo "[CLAUDE.md] 同步中..."
+    mkdir -p "$SCRIPT_DIR/claude_md_files"
     cp "$CLAUDE_DIR/CLAUDE.md" "$LOCAL_CLAUDE_MD"
 fi
 

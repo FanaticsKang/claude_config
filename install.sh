@@ -11,7 +11,7 @@ CLAUDE_DIR="$HOME/.claude"
 LOCAL_AGENTS="$SCRIPT_DIR/agents"
 LOCAL_COMMANDS="$SCRIPT_DIR/commands"
 LOCAL_SKILLS="$SCRIPT_DIR/skills"
-LOCAL_CLAUDE_MD="$SCRIPT_DIR/CLAUDE.md"
+LOCAL_CLAUDE_MD="$SCRIPT_DIR/claude_md_files/CLAUDE.md"
 
 echo "=== 安装本地文件到 ~/.claude ==="
 
