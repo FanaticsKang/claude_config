@@ -237,7 +237,7 @@ install_file() {
     if [ ! -f "$dst_file" ]; then
         echo -e "  ${GREEN}[新增]${NC} $name"
         ADDED=$((ADDED + 1))
-    elif files_equal "$src_file" "$dst_file"; then
+    elif files_equal "$src_file" "$dst_file" ]; then
         echo -e "  ${BLUE}[未变]${NC} $name"
         UNCHANGED=$((UNCHANGED + 1))
     else
@@ -247,6 +247,87 @@ install_file() {
 
     # 执行复制
     cp "$src_file" "$dst_file"
+}
+
+# 安装官方 skills（从 anthropics/skills 仓库）
+install_official_skills() {
+    local dst_dir="$1"
+    local official_repo="https://github.com/anthropics/skills"
+    local tmp_dir=$(mktemp -d)
+    local skill_name="skill-creator"
+
+    echo ""
+    echo "=== [官方 skills] ==="
+    echo ""
+
+    # 检查目标目录是否存在
+    mkdir -p "$dst_dir"
+
+    # 克隆官方仓库
+    echo -e "  ${BLUE}[信息]${NC} 正在克隆官方 skills 仓库..."
+    if ! git clone --depth 1 "$official_repo" "$tmp_dir/skills-repo" 2>/dev/null; then
+        echo -e "  ${RED}[失败]${NC} 无法克隆官方仓库: $official_repo"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    # 检查 skill-creator 是否存在
+    local src_skill="$tmp_dir/skills-repo/skills/$skill_name"
+    local dst_skill="$dst_dir/$skill_name"
+
+    if [ ! -d "$src_skill" ]; then
+        echo -e "  ${RED}[失败]${NC} 官方仓库中未找到 $skill_name"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    # 判断状态
+    if [ ! -d "$dst_skill" ]; then
+        echo -e "  ${GREEN}[新增]${NC} $skill_name/ (来自官方仓库)"
+        ADDED=$((ADDED + 1))
+    else
+        # 检查是否有变更
+        local has_change=false
+        local tmp_all_files=$(mktemp)
+
+        find "$src_skill" -type f 2>/dev/null | sed "s|^$src_skill/||" > "$tmp_all_files"
+        find "$dst_skill" -type f 2>/dev/null | sed "s|^$dst_skill/||" >> "$tmp_all_files"
+        sort -u "$tmp_all_files" -o "$tmp_all_files"
+
+        while IFS= read -r rel_path; do
+            [ -z "$rel_path" ] && continue
+            [[ "$rel_path" == */.gitkeep ]] && continue
+
+            local src_file="$src_skill/$rel_path"
+            local dst_file="$dst_skill/$rel_path"
+
+            if [ ! -f "$src_file" ] || [ ! -f "$dst_file" ]; then
+                has_change=true
+                break
+            elif ! diff -q "$src_file" "$dst_file" > /dev/null 2>&1; then
+                has_change=true
+                break
+            fi
+        done < "$tmp_all_files"
+
+        rm -f "$tmp_all_files"
+
+        if [ "$has_change" = true ]; then
+            echo -e "  ${YELLOW}[修改]${NC} $skill_name/ (官方仓库更新)"
+            MODIFIED=$((MODIFIED + 1))
+        else
+            echo -e "  ${BLUE}[未变]${NC} $skill_name/ (官方仓库)"
+            UNCHANGED=$((UNCHANGED + 1))
+        fi
+    fi
+
+    # 复制 skill-creator 到目标目录
+    rsync -a --delete "$src_skill/" "$dst_skill/" 2>/dev/null
+
+    # 清理临时目录
+    rm -rf "$tmp_dir"
+
+    echo -e "  ${GREEN}[完成]${NC} $skill_name/ 安装完成"
 }
 
 echo "=========================================="
@@ -265,6 +346,9 @@ install_directory_detailed "$LOCAL_COMMANDS" "$CLAUDE_DIR/commands" "commands"
 
 # 安装 skills（按文件夹聚合）
 install_skills "$LOCAL_SKILLS" "$CLAUDE_DIR/skills"
+
+# 安装官方 skills
+install_official_skills "$CLAUDE_DIR/skills"
 
 # 安装 CLAUDE.md
 install_file "$LOCAL_CLAUDE_MD" "$CLAUDE_DIR/CLAUDE.md" "CLAUDE.md"
