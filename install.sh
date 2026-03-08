@@ -26,6 +26,14 @@ MODIFIED=0
 DELETED=0
 UNCHANGED=0
 
+# 获取远程 skills 名称列表（用于排除）
+get_remote_skill_names() {
+    local config_file="$SCRIPT_DIR/remote_skills.json"
+    if [ -f "$config_file" ]; then
+        jq -r '.skills[].skills[]' "$config_file" 2>/dev/null | sort -u
+    fi
+}
+
 # 比较两个文件是否相同
 files_equal() {
     local src="$1"
@@ -126,6 +134,7 @@ install_directory_detailed() {
 install_skills() {
     local src_dir="$1"
     local dst_dir="$2"
+    local exclude_list="$3"
 
     if [ ! -d "$src_dir" ]; then
         return
@@ -154,6 +163,15 @@ install_skills() {
         [ -z "$skill_name" ] && continue
 
         local src_skill="$src_dir/$skill_name"
+
+        # 检查是否与远程 skill 冲突（本地优先，显示警告）
+        if echo "$exclude_list" | grep -qx "$skill_name"; then
+            if [ -d "$src_skill" ]; then
+                echo -e "  ${YELLOW}[警告]${NC} $skill_name/ 与远程冲突，优先使用本地版本"
+                has_output=true
+            fi
+            continue
+        fi
         local dst_skill="$dst_dir/$skill_name"
 
         # 判断状态
@@ -214,8 +232,14 @@ install_skills() {
         echo -e "  ${BLUE}[无变更]${NC}"
     fi
 
-    # 执行 rsync 同步
-    rsync -a --delete "$src_dir/" "$dst_dir/" 2>/dev/null
+    # 执行 rsync 同步（排除远程 skills）
+    local rsync_excludes=""
+    if [ -n "$exclude_list" ]; then
+        while IFS= read -r exclude_skill; do
+            [ -n "$exclude_skill" ] && rsync_excludes="$rsync_excludes --exclude=$exclude_skill"
+        done <<< "$exclude_list"
+    fi
+    rsync -a --delete $rsync_excludes "$src_dir/" "$dst_dir/" 2>/dev/null
 }
 
 # 处理单个文件安装
@@ -237,7 +261,7 @@ install_file() {
     if [ ! -f "$dst_file" ]; then
         echo -e "  ${GREEN}[新增]${NC} $name"
         ADDED=$((ADDED + 1))
-    elif files_equal "$src_file" "$dst_file" ]; then
+    elif files_equal "$src_file" "$dst_file"; then
         echo -e "  ${BLUE}[未变]${NC} $name"
         UNCHANGED=$((UNCHANGED + 1))
     else
@@ -249,85 +273,120 @@ install_file() {
     cp "$src_file" "$dst_file"
 }
 
-# 安装官方 skills（从 anthropics/skills 仓库）
-install_official_skills() {
+# 从 repo URL 提取目录名
+extract_repo_dir_name() {
+    local repo_url="$1"
+    # 移除 .git 后缀，提取最后一段（如 anthroipics/skills -> skills）
+    basename "$repo_url" .git | sed 's/.*\///'
+}
+
+# 安装远程 skills（从 JSON 配置读取）
+install_remote_skills() {
     local dst_dir="$1"
-    local official_repo="https://github.com/anthropics/skills"
-    local tmp_dir=$(mktemp -d)
-    local skill_name="skill-creator"
+    local config_file="$SCRIPT_DIR/remote_skills.json"
 
     echo ""
-    echo "=== [官方 skills] ==="
+    echo "=== [远程 skills] ==="
     echo ""
 
-    # 检查目标目录是否存在
-    mkdir -p "$dst_dir"
-
-    # 克隆官方仓库
-    echo -e "  ${BLUE}[信息]${NC} 正在克隆官方 skills 仓库..."
-    if ! git clone --depth 1 "$official_repo" "$tmp_dir/skills-repo" 2>/dev/null; then
-        echo -e "  ${RED}[失败]${NC} 无法克隆官方仓库: $official_repo"
-        rm -rf "$tmp_dir"
-        return 1
+    # 检查配置文件是否存在
+    if [ ! -f "$config_file" ]; then
+        echo -e "  ${YELLOW}[跳过]${NC} 配置文件不存在: $config_file"
+        return 0
     fi
 
-    # 检查 skill-creator 是否存在
-    local src_skill="$tmp_dir/skills-repo/skills/$skill_name"
-    local dst_skill="$dst_dir/$skill_name"
-
-    if [ ! -d "$src_skill" ]; then
-        echo -e "  ${RED}[失败]${NC} 官方仓库中未找到 $skill_name"
-        rm -rf "$tmp_dir"
-        return 1
+    # 检查目标目录
+    if [ ! -d "$dst_dir" ]; then
+        mkdir -p "$dst_dir"
+        echo -e "  ${GREEN}[创建]${NC} 目录: $dst_dir"
     fi
 
-    # 判断状态
-    if [ ! -d "$dst_skill" ]; then
-        echo -e "  ${GREEN}[新增]${NC} $skill_name/ (来自官方仓库)"
-        ADDED=$((ADDED + 1))
-    else
-        # 检查是否有变更
-        local has_change=false
-        local tmp_all_files=$(mktemp)
+    # 解析并处理每个仓库配置
+    local repo_count=$(jq -r '.skills | length' "$config_file" 2>/dev/null || echo "0")
 
-        find "$src_skill" -type f 2>/dev/null | sed "s|^$src_skill/||" > "$tmp_all_files"
-        find "$dst_skill" -type f 2>/dev/null | sed "s|^$dst_skill/||" >> "$tmp_all_files"
-        sort -u "$tmp_all_files" -o "$tmp_all_files"
+    if [ "$repo_count" -eq 0 ]; then
+        echo -e "  ${YELLOW}[跳过]${NC} 配置文件中没有 skills 配置"
+        return 0
+    fi
 
-        while IFS= read -r rel_path; do
-            [ -z "$rel_path" ] && continue
-            [[ "$rel_path" == */.gitkeep ]] && continue
+    local tmp_base=$(mktemp -d)
 
-            local src_file="$src_skill/$rel_path"
-            local dst_file="$dst_skill/$rel_path"
+    for ((i=0; i<repo_count; i++)); do
+        local repo=$(jq -r ".skills[$i].repo" "$config_file")
+        local branch=$(jq -r ".skills[$i].branch // empty" "$config_file")
+        local path=$(jq -r ".skills[$i].path // empty" "$config_file")
+        local skills=$(jq -r ".skills[$i].skills[]" "$config_file" 2>/dev/null)
 
-            if [ ! -f "$src_file" ] || [ ! -f "$dst_file" ]; then
-                has_change=true
-                break
-            elif ! diff -q "$src_file" "$dst_file" > /dev/null 2>&1; then
-                has_change=true
-                break
-            fi
-        done < "$tmp_all_files"
-
-        rm -f "$tmp_all_files"
-
-        if [ "$has_change" = true ]; then
-            echo -e "  ${YELLOW}[修改]${NC} $skill_name/ (官方仓库更新)"
-            MODIFIED=$((MODIFIED + 1))
-        else
-            echo -e "  ${BLUE}[未变]${NC} $skill_name/ (官方仓库)"
-            UNCHANGED=$((UNCHANGED + 1))
+        if [ -z "$repo" ] || [ "$repo" = "null" ]; then
+            echo -e "  ${RED}[错误]${NC} 配置项 $i: repo 字段缺失"
+            continue
         fi
-    fi
 
-    # 复制 skill-creator 到目标目录
-    rsync -a --delete "$src_skill/" "$dst_skill/" 2>/dev/null
+        local repo_dir_name=$(extract_repo_dir_name "$repo")
+        local clone_dir="$tmp_base/$repo_dir_name"
+
+        echo ""
+        echo -e "  ${BLUE}[信息]${NC} 处理仓库: $repo"
+
+        # 克隆仓库
+        local clone_opts="--depth 1"
+        if [ -n "$branch" ] && [ "$branch" != "null" ]; then
+            clone_opts="$clone_opts --branch $branch"
+        fi
+
+        if ! git clone $clone_opts "$repo" "$clone_dir" 2>/dev/null; then
+            echo -e "  ${RED}[失败]${NC} 无法克隆仓库: $repo"
+            continue
+        fi
+
+        # 确定 skills 子目录路径
+        local skills_base_path="$clone_dir"
+        if [ -n "$path" ] && [ "$path" != "null" ]; then
+            skills_base_path="$clone_dir/$path"
+        elif [ -d "$clone_dir/skills" ]; then
+            skills_base_path="$clone_dir/skills"
+        fi
+
+        # 安装每个 skill
+        while IFS= read -r skill_name; do
+            [ -z "$skill_name" ] && continue
+
+            local src_skill="$skills_base_path/$skill_name"
+            local dst_skill="$dst_dir/$skill_name"
+            local local_skill="$SCRIPT_DIR/skills/$skill_name"
+
+            # 检查源 skill 是否存在
+            if [ ! -d "$src_skill" ]; then
+                echo -e "  ${RED}[失败]${NC} 仓库中未找到 skill: $skill_name"
+                continue
+            fi
+
+            # 冲突处理1：本地源码目录有同名 skill，保留本地并警告
+            if [ -d "$local_skill" ]; then
+                echo -e "  ${YELLOW}[警告]${NC} $skill_name/ 本地已存在，保留本地版本"
+                continue
+            fi
+
+            # 冲突处理2：目标目录已存在，用远程版本更新
+            if [ -d "$dst_skill" ]; then
+                echo -e "  ${YELLOW}[更新]${NC} $skill_name/ (远程更新)"
+                rsync -a --delete "$src_skill/" "$dst_skill/" 2>/dev/null
+                MODIFIED=$((MODIFIED + 1))
+                continue
+            fi
+
+            # 安装 skill
+            echo -e "  ${GREEN}[新增]${NC} $skill_name/ (来自 $repo_dir_name)"
+            rsync -a --delete "$src_skill/" "$dst_skill/" 2>/dev/null
+            ADDED=$((ADDED + 1))
+        done <<< "$skills"
+    done
 
     # 清理临时目录
-    rm -rf "$tmp_dir"
+    rm -rf "$tmp_base"
 
-    echo -e "  ${GREEN}[完成]${NC} $skill_name/ 安装完成"
+    echo ""
+    echo -e "  ${GREEN}[完成]${NC} 远程 skills 安装完成"
 }
 
 echo "=========================================="
@@ -344,11 +403,14 @@ install_directory_detailed "$LOCAL_AGENTS" "$CLAUDE_DIR/agents" "agents"
 # 安装 commands（详细模式）
 install_directory_detailed "$LOCAL_COMMANDS" "$CLAUDE_DIR/commands" "commands"
 
-# 安装 skills（按文件夹聚合）
-install_skills "$LOCAL_SKILLS" "$CLAUDE_DIR/skills"
+# 获取远程 skills 列表（用于本地同步时排除）
+REMOTE_SKILL_NAMES=$(get_remote_skill_names)
 
-# 安装官方 skills
-install_official_skills "$CLAUDE_DIR/skills"
+# 安装 skills（按文件夹聚合，排除远程 skills）
+install_skills "$LOCAL_SKILLS" "$CLAUDE_DIR/skills" "$REMOTE_SKILL_NAMES"
+
+# 安装远程 skills
+install_remote_skills "$CLAUDE_DIR/skills"
 
 # 安装 CLAUDE.md
 install_file "$LOCAL_CLAUDE_MD" "$CLAUDE_DIR/CLAUDE.md" "CLAUDE.md"
