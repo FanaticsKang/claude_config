@@ -17,6 +17,7 @@
 │
 ├── install.sh             # 安装脚本
 ├── uninstall.sh           # 卸载脚本
+├── remote_config.json     # 远程 agents/skills 配置
 └── test/                  # 测试数据
 ```
 
@@ -61,13 +62,41 @@
   未变: 15
 ```
 
+## 远程配置
+
+`remote_config.json` 配置远程安装的 agents 和 skills：
+
+```json
+{
+  "version": "1.0",
+  "agents": [
+    {
+      "repo": "https://github.com/anthropics/claude-plugins-official",
+      "branch": "",
+      "path": "plugins/code-simplifier/agents",
+      "agents": ["code-simplifier"]
+    }
+  ],
+  "skills": [
+    {
+      "repo": "https://github.com/anthropics/skills",
+      "branch": "",
+      "path": "",
+      "skills": ["skill-creator", "pdf"]
+    }
+  ]
+}
+```
+
+安装时会自动从配置的仓库克隆并安装到 `~/.claude/` 目录。
+
 ## 卸载
 
 ```bash
 ./uninstall.sh
 ```
 
-卸载脚本会删除 `~/.claude/` 下的所有相关配置。
+卸载脚本会删除 `~/.claude/` 下的所有相关配置（包括本地和远程安装的组件）。
 
 ## 组件说明
 

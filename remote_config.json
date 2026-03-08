@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "agents": [
+    {
+      "repo": "https://github.com/anthropics/claude-plugins-official",
+      "branch": "",
+      "path": "plugins/code-simplifier/agents",
+      "agents": ["code-simplifier"]
+    }
+  ],
+  "skills": [
+    {
+      "repo": "https://github.com/anthropics/skills",
+      "branch": "",
+      "path": "",
+      "skills": ["skill-creator", "pdf"]
+    }
+  ]
+}

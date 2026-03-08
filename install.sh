@@ -28,9 +28,17 @@ UNCHANGED=0
 
 # 获取远程 skills 名称列表（用于排除）
 get_remote_skill_names() {
-    local config_file="$SCRIPT_DIR/remote_skills.json"
+    local config_file="$SCRIPT_DIR/remote_config.json"
     if [ -f "$config_file" ]; then
         jq -r '.skills[].skills[]' "$config_file" 2>/dev/null | sort -u
+    fi
+}
+
+# 获取远程 agents 名称列表（用于排除）
+get_remote_agent_names() {
+    local config_file="$SCRIPT_DIR/remote_config.json"
+    if [ -f "$config_file" ]; then
+        jq -r '.agents[].agents[]' "$config_file" 2>/dev/null | sort -u
     fi
 }
 
@@ -283,7 +291,7 @@ extract_repo_dir_name() {
 # 安装远程 skills（从 JSON 配置读取）
 install_remote_skills() {
     local dst_dir="$1"
-    local config_file="$SCRIPT_DIR/remote_skills.json"
+    local config_file="$SCRIPT_DIR/remote_config.json"
 
     echo ""
     echo "=== [远程 skills] ==="
@@ -389,6 +397,113 @@ install_remote_skills() {
     echo -e "  ${GREEN}[完成]${NC} 远程 skills 安装完成"
 }
 
+# 安装远程 agents（从 JSON 配置读取）
+install_remote_agents() {
+    local dst_dir="$1"
+    local config_file="$SCRIPT_DIR/remote_config.json"
+
+    echo ""
+    echo "=== [远程 agents] ==="
+    echo ""
+
+    # 检查配置文件是否存在
+    if [ ! -f "$config_file" ]; then
+        echo -e "  ${YELLOW}[跳过]${NC} 配置文件不存在: $config_file"
+        return 0
+    fi
+
+    # 检查目标目录
+    if [ ! -d "$dst_dir" ]; then
+        mkdir -p "$dst_dir"
+        echo -e "  ${GREEN}[创建]${NC} 目录: $dst_dir"
+    fi
+
+    # 解析并处理每个仓库配置
+    local repo_count=$(jq -r '.agents | length' "$config_file" 2>/dev/null || echo "0")
+
+    if [ "$repo_count" -eq 0 ]; then
+        echo -e "  ${YELLOW}[跳过]${NC} 配置文件中没有 agents 配置"
+        return 0
+    fi
+
+    local tmp_base=$(mktemp -d)
+
+    for ((i=0; i<repo_count; i++)); do
+        local repo=$(jq -r ".agents[$i].repo" "$config_file")
+        local branch=$(jq -r ".agents[$i].branch // empty" "$config_file")
+        local path=$(jq -r ".agents[$i].path // empty" "$config_file")
+        local agents=$(jq -r ".agents[$i].agents[]" "$config_file" 2>/dev/null)
+
+        if [ -z "$repo" ] || [ "$repo" = "null" ]; then
+            echo -e "  ${RED}[错误]${NC} 配置项 $i: repo 字段缺失"
+            continue
+        fi
+
+        local repo_dir_name=$(extract_repo_dir_name "$repo")
+        local clone_dir="$tmp_base/$repo_dir_name"
+
+        echo ""
+        echo -e "  ${BLUE}[信息]${NC} 处理仓库: $repo"
+
+        # 克隆仓库
+        local clone_opts="--depth 1"
+        if [ -n "$branch" ] && [ "$branch" != "null" ]; then
+            clone_opts="$clone_opts --branch $branch"
+        fi
+
+        if ! git clone $clone_opts "$repo" "$clone_dir" 2>/dev/null; then
+            echo -e "  ${RED}[失败]${NC} 无法克隆仓库: $repo"
+            continue
+        fi
+
+        # 确定 agents 子目录路径
+        local agents_base_path="$clone_dir"
+        if [ -n "$path" ] && [ "$path" != "null" ]; then
+            agents_base_path="$clone_dir/$path"
+        fi
+
+        # 安装每个 agent
+        while IFS= read -r agent_name; do
+            [ -z "$agent_name" ] && continue
+
+            local src_agent="$agents_base_path/${agent_name}.md"
+            local dst_agent="$dst_dir/${agent_name}.md"
+            local local_agent="$SCRIPT_DIR/agents/${agent_name}.md"
+
+            # 检查源 agent 是否存在
+            if [ ! -f "$src_agent" ]; then
+                echo -e "  ${RED}[失败]${NC} 仓库中未找到 agent: $agent_name"
+                continue
+            fi
+
+            # 冲突处理1：本地源码目录有同名 agent，保留本地并警告
+            if [ -f "$local_agent" ]; then
+                echo -e "  ${YELLOW}[警告]${NC} $agent_name 本地已存在，保留本地版本"
+                continue
+            fi
+
+            # 冲突处理2：目标目录已存在，用远程版本更新
+            if [ -f "$dst_agent" ]; then
+                echo -e "  ${YELLOW}[更新]${NC} $agent_name (远程更新)"
+                cp "$src_agent" "$dst_agent"
+                MODIFIED=$((MODIFIED + 1))
+                continue
+            fi
+
+            # 安装 agent
+            echo -e "  ${GREEN}[新增]${NC} $agent_name (来自 $repo_dir_name)"
+            cp "$src_agent" "$dst_agent"
+            ADDED=$((ADDED + 1))
+        done <<< "$agents"
+    done
+
+    # 清理临时目录
+    rm -rf "$tmp_base"
+
+    echo ""
+    echo -e "  ${GREEN}[完成]${NC} 远程 agents 安装完成"
+}
+
 echo "=========================================="
 echo "      Claude Config 安装工具"
 echo "=========================================="
@@ -397,7 +512,10 @@ echo "源目录: $SCRIPT_DIR"
 echo "目标目录: $CLAUDE_DIR"
 echo ""
 
-# 安装 agents（详细模式）
+# 获取远程 agents 列表（用于本地同步时排除）
+REMOTE_AGENT_NAMES=$(get_remote_agent_names)
+
+# 安装 agents（详细模式，排除远程 agents）
 install_directory_detailed "$LOCAL_AGENTS" "$CLAUDE_DIR/agents" "agents"
 
 # 安装 commands（详细模式）
@@ -411,6 +529,9 @@ install_skills "$LOCAL_SKILLS" "$CLAUDE_DIR/skills" "$REMOTE_SKILL_NAMES"
 
 # 安装远程 skills
 install_remote_skills "$CLAUDE_DIR/skills"
+
+# 安装远程 agents
+install_remote_agents "$CLAUDE_DIR/agents"
 
 # 安装 CLAUDE.md
 install_file "$LOCAL_CLAUDE_MD" "$CLAUDE_DIR/CLAUDE.md" "CLAUDE.md"

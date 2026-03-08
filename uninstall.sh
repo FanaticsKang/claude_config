@@ -39,11 +39,19 @@ get_local_skills() {
     fi
 }
 
-# 从 remote_skills.json 读取远程安装的 skills
+# 从 remote_config.json 读取远程安装的 skills
 get_remote_skills() {
-    local config_file="$SCRIPT_DIR/remote_skills.json"
+    local config_file="$SCRIPT_DIR/remote_config.json"
     if [ -f "$config_file" ]; then
         jq -r '.skills[].skills[]' "$config_file" 2>/dev/null || true
+    fi
+}
+
+# 从 remote_config.json 读取远程安装的 agents
+get_remote_agents() {
+    local config_file="$SCRIPT_DIR/remote_config.json"
+    if [ -f "$config_file" ]; then
+        jq -r '.agents[].agents[]' "$config_file" 2>/dev/null || true
     fi
 }
 
@@ -57,20 +65,24 @@ local_agents=($(get_local_agents))
 local_commands=($(get_local_commands))
 local_skills=($(get_local_skills))
 remote_skills=($(get_remote_skills))
+remote_agents=($(get_remote_agents))
 
 # 合并所有 skills 并去重
 all_skills=($(echo "${local_skills[@]} ${remote_skills[@]}" | tr ' ' '\n' | sort -u))
 
-if [ ${#local_agents[@]} -gt 0 ]; then
-    echo "  - agents: ${local_agents[*]%.md}"
+# 合并所有 agents 并去重
+all_agents=($(echo "${local_agents[*]%.md} ${remote_agents[@]}" | tr ' ' '\n' | sort -u))
+
+if [ ${#all_agents[@]} -gt 0 ] && [ "${all_agents[0]}" != "" ]; then
+    echo "  - agents: ${all_agents[*]}"
 fi
 if [ ${#local_commands[@]} -gt 0 ]; then
     echo "  - commands: ${local_commands[*]%.md}"
 fi
-if [ ${#all_skills[@]} -gt 0 ]; then
+if [ ${#all_skills[@]} -gt 0 ] && [ "${all_skills[0]}" != "" ]; then
     echo "  - skills: ${all_skills[*]}"
 fi
-if [ ${#local_agents[@]} -eq 0 ] && [ ${#local_commands[@]} -eq 0 ] && [ ${#all_skills[@]} -eq 0 ]; then
+if [ ${#all_agents[@]} -eq 0 ] && [ ${#local_commands[@]} -eq 0 ] && [ ${#all_skills[@]} -eq 0 ]; then
     echo "  (无内容可卸载)"
 fi
 echo ""
@@ -86,10 +98,10 @@ echo "=== 开始卸载 ==="
 echo ""
 
 # 删除 agents
-if [ ${#local_agents[@]} -gt 0 ]; then
+if [ ${#all_agents[@]} -gt 0 ] && [ "${all_agents[0]}" != "" ]; then
     echo "[agents] 删除中..."
-    for agent in "${local_agents[@]}"; do
-        path="$CLAUDE_DIR/agents/$agent"
+    for agent in "${all_agents[@]}"; do
+        path="$CLAUDE_DIR/agents/${agent}.md"
         if [ -f "$path" ]; then
             rm -v "$path"
         fi
