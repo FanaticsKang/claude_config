@@ -6,19 +6,25 @@
 
 ```
 .
-├── agents/                 # 自定义 Agent 定义
+├── .claude/               # Claude Code 配置目录
+│   └── settings.local.json
+│
+├── agents/                # 自定义 Agent 定义
+│
+├── claude_md_files/       # Claude 全局配置
+│   └── CLAUDE.md
 │
 ├── commands/              # 自定义 Slash Commands
 │
-├── skills/                # 自定义 Skills
+├── skills/                # 本地 Skills
 │
-├── claude_md_files/
-│   └── CLAUDE.md          # Claude 全局配置
+├── test/                  # 测试数据
 │
+├── .gitignore             # Git 忽略文件
 ├── install.sh             # 安装脚本
-├── uninstall.sh           # 卸载脚本
 ├── remote_config.json     # 远程 agents/skills 配置
-└── test/                  # 测试数据
+├── uninstall.sh           # 卸载脚本
+└── README.md              # 项目说明
 ```
 
 ## 安装
@@ -122,12 +128,17 @@
 
 ### Skills
 
-| Skill | 用途 |
-|-------|------|
-| `find-skills` | 帮助发现和安装可用的 skills |
-| `git-email-rewrite` | 修改 Git 提交历史中的邮箱地址 |
-| `json_analysis` | 分析大型 JSON 文件结构，生成文档 |
-| `skill-creator` | 创建、测试和优化 skills |
+| Skill | 用途 | 类型 |
+|-------|------|------|
+| `find-skills` | 帮助发现和安装可用的 skills | 本地 |
+| `git-email-rewrite` | 修改 Git 提交历史中的邮箱地址 | 本地 |
+| `json_analysis` | 分析大型 JSON 文件结构，生成文档 | 本地 |
+| `pdf` | PDF 文件处理（读取、合并、拆分等） | 远程 |
+| `skill-creator` | 创建、测试和优化 skills | 远程 |
+
+**说明：**
+- **本地**：位于 `skills/` 目录，随仓库一起管理
+- **远程**：通过 `remote_config.json` 配置，安装时从外部仓库获取
 
 ## CLAUDE.md 配置
 

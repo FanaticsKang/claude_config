@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 JSON 文件分析工具
-分析大型 JSON 文件结构并生成格式说明文档
+分析大型 JSON 文件结构并生成格式说明文档（支持 Markdown 和 CSV 输出）
 """
 
 import json
+import csv
 import os
 import sys
 from collections import defaultdict
@@ -28,7 +29,9 @@ def infer_key_type(keys):
 
     # 纯数字
     if all(str(k).isdigit() for k in keys[:10]):
-        if len(sample) >= 13:
+        if len(sample) >= 16:
+            return 'timestamp_ns'
+        elif len(sample) >= 13:
             return 'timestamp_ms'
         elif len(sample) >= 10:
             return 'timestamp'
@@ -273,6 +276,7 @@ def generate_markdown_report(file_path, analysis_result, output_path=None):
 
         key_type_desc = {
             'timestamp_ms': '毫秒级时间戳（如 17687934610349602）',
+            'timestamp_ns': '纳秒级时间戳（如 1768793461034960200）',
             'timestamp': '秒级时间戳',
             'numeric_id': '数字ID',
             'uuid': 'UUID 格式',
@@ -352,26 +356,160 @@ def generate_markdown_report(file_path, analysis_result, output_path=None):
     return content
 
 
+def generate_csv_report(file_path, analysis_result, output_path=None, field_descriptions=None):
+    """
+    生成 CSV 格式的字段说明文档
+
+    Args:
+        file_path: JSON 文件路径
+        analysis_result: 分析结果字典
+        output_path: 输出路径
+        field_descriptions: 字段描述字典 {字段路径: 描述}
+    """
+    file_size = os.path.getsize(file_path)
+    file_size_mb = file_size / (1024 * 1024)
+
+    properties = analysis_result['properties']
+    is_homogeneous = analysis_result.get('is_homogeneous', False)
+    total_count = analysis_result.get('total_count', 0)
+
+    # 自动生成输出路径
+    if not output_path:
+        base_name = Path(file_path).stem
+        output_path = f"{base_name}_fields.csv"
+
+    # 按路径深度和字母顺序排序
+    sorted_fields = sorted(properties.items(), key=lambda x: (x[0].count('.'), x[0]))
+
+    with open(output_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        # 写入表头
+        writer.writerow(['字段路径', '数据类型', '出现率', '是否可选', '示例值', '字段描述'])
+
+        for path, info in sorted_fields:
+            presence_rate = info.get('presence_rate', 1.0)
+            presence_str = f"{presence_rate * 100:.0f}%"
+            optional_str = "是" if info.get('optional') else "否"
+            samples = ', '.join(info['samples'][:1]) if info.get('samples') else ''
+            samples = samples[:50]  # 限制长度
+
+            # 获取字段描述
+            description = ''
+            if field_descriptions and path in field_descriptions:
+                description = field_descriptions[path]
+
+            writer.writerow([
+                path,
+                info.get('type', 'object'),
+                presence_str,
+                optional_str,
+                samples,
+                description
+            ])
+
+    print(f"CSV 报告已生成: {output_path}")
+    return output_path
+
+
+def load_field_descriptions(desc_file):
+    """
+    从文件加载字段描述
+
+    支持格式：
+    - JSON: {"字段路径": "描述", ...}
+    - CSV: 字段路径,描述
+    """
+    if not os.path.exists(desc_file):
+        return {}
+
+    ext = Path(desc_file).suffix.lower()
+
+    try:
+        if ext == '.json':
+            with open(desc_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        elif ext == '.csv':
+            desc_map = {}
+            with open(desc_file, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                header = next(reader, None)  # 跳过表头
+                for row in reader:
+                    if len(row) >= 2:
+                        desc_map[row[0]] = row[1]
+            return desc_map
+    except Exception as e:
+        print(f"警告: 无法加载字段描述文件: {e}")
+        return {}
+
+    return {}
+
+
 def main():
     """命令行入口"""
     if len(sys.argv) < 2:
-        print("用法: python analyze_json.py <json文件路径> [输出路径] [采样大小]")
+        print("用法: python analyze_json.py <json文件路径> [选项]")
+        print("")
+        print("选项:")
+        print("  -o, --output <路径>    指定输出路径")
+        print("  -f, --format <格式>    输出格式: markdown (默认) | csv")
+        print("  -s, --sample <数量>    采样大小，默认 20")
+        print("  -d, --desc <文件>      字段描述文件 (JSON 或 CSV)")
+        print("")
         print("示例:")
+        print("  # 生成 Markdown 报告")
         print("  python analyze_json.py data.json")
-        print("  python analyze_json.py data.json report.md")
-        print("  python analyze_json.py data.json report.md 50")
+        print("")
+        print("  # 生成 CSV 报告")
+        print("  python analyze_json.py data.json -f csv")
+        print("")
+        print("  # 指定输出路径和采样大小")
+        print("  python analyze_json.py data.json -o report.md -s 50")
+        print("")
+        print("  # 使用字段描述文件生成 CSV")
+        print("  python analyze_json.py data.json -f csv -d descriptions.json")
         sys.exit(1)
 
     file_path = sys.argv[1]
-    output_path = sys.argv[2] if len(sys.argv) > 2 else None
-    sample_size = int(sys.argv[3]) if len(sys.argv) > 3 else 20
 
     if not os.path.exists(file_path):
         print(f"错误: 文件不存在 - {file_path}")
         sys.exit(1)
 
+    # 解析参数
+    output_path = None
+    output_format = 'markdown'
+    sample_size = 20
+    desc_file = None
+
+    i = 2
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg in ('-o', '--output') and i + 1 < len(sys.argv):
+            output_path = sys.argv[i + 1]
+            i += 2
+        elif arg in ('-f', '--format') and i + 1 < len(sys.argv):
+            output_format = sys.argv[i + 1].lower()
+            i += 2
+        elif arg in ('-s', '--sample') and i + 1 < len(sys.argv):
+            sample_size = int(sys.argv[i + 1])
+            i += 2
+        elif arg in ('-d', '--desc') and i + 1 < len(sys.argv):
+            desc_file = sys.argv[i + 1]
+            i += 2
+        else:
+            # 兼容旧版参数：analyze_json.py <json> <output> <sample>
+            if i == 2 and not arg.startswith('-'):
+                output_path = arg
+            elif i == 3 and not arg.startswith('-') and output_path:
+                try:
+                    sample_size = int(arg)
+                except ValueError:
+                    pass
+            i += 1
+
     print(f"分析文件: {file_path}")
     print(f"文件大小: {get_file_size_human(os.path.getsize(file_path))}")
+    print(f"输出格式: {output_format}")
     print(f"采样大小: {sample_size}")
     print("分析中...")
 
@@ -381,12 +519,20 @@ def main():
     print(f"  - 总记录数: {result['total_count']}")
     print(f"  - 字段数: {len(result['properties'])}")
 
+    # 自动生成输出路径
     if not output_path:
-        # 自动生成输出路径
         base_name = Path(file_path).stem
-        output_path = f"{base_name}_analysis_report.md"
+        if output_format == 'csv':
+            output_path = f"{base_name}_fields.csv"
+        else:
+            output_path = f"{base_name}_analysis_report.md"
 
-    generate_markdown_report(file_path, result, output_path)
+    # 根据格式生成报告
+    if output_format == 'csv':
+        field_descriptions = load_field_descriptions(desc_file) if desc_file else None
+        generate_csv_report(file_path, result, output_path, field_descriptions)
+    else:
+        generate_markdown_report(file_path, result, output_path)
 
 
 if __name__ == '__main__':
