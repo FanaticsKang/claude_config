@@ -1,0 +1,29 @@
+{
+  "skill_name": "python-test-builder",
+  "evals": [
+    {
+      "id": 1,
+      "name": "简单数据处理函数",
+      "prompt": "请为以下代码生成测试用例。我有一个数据处理器，文件路径是 `/workspace/data_processor.py`。同时我有真实数据文件在 `/workspace/test_data/sample.json`，请在测试中使用这个真实数据。",
+      "files": ["evals/test_data/sample_processor.py"],
+      "expected_output": "生成 test_data_processor.py 测试文件，包含功能性、边界条件、异常容错等维度的测试，并使用真实数据文件",
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "带外部依赖的类",
+      "prompt": "帮我写测试用例。文件是 `/workspace/api_client.py`，它调用了外部 API。我没有真实数据文件，需要你帮我构造测试数据。",
+      "files": ["evals/test_data/api_client.py"],
+      "expected_output": "生成 test_api_client.py，使用 mock 来模拟外部依赖，构造合适的测试数据",
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "边界条件丰富的函数",
+      "prompt": "为这段代码生成全面的测试用例，重点测试边界条件。文件 `/workspace/calculator.py`。真实数据在 `/workspace/test_data/numbers.json`。",
+      "files": ["evals/test_data/calculator.py"],
+      "expected_output": "生成 test_calculator.py，重点关注数值边界（0、负数、极大值等）、空值处理的测试",
+      "assertions": []
+    }
+  ]
+}
