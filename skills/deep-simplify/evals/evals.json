@@ -1,0 +1,26 @@
+{
+  "skill_name": "deep-simplify",
+  "evals": [
+    {
+      "id": 1,
+      "name": "simple-dead-function",
+      "prompt": "在这个项目中的 /Users/kang/Documents/workspace/rebuild_data_flow/test_sample.py 文件包含一个从未被调用的函数 unused_helper()，请使用 /deep-simplify 简化这个文件，移除死代码",
+      "expected_output": "unused_helper 函数被识别为死代码并移除",
+      "files": ["test_sample.py"]
+    },
+    {
+      "id": 2,
+      "name": "dead-branch-detection",
+      "prompt": "简化 /Users/kang/Documents/workspace/rebuild_data_flow/node/time_sync_node.py 文件，找出并移除那些从未被执行的 if-else 分支",
+      "expected_output": "识别出未执行的分支并生成覆盖率报告",
+      "files": ["node/time_sync_node.py"]
+    },
+    {
+      "id": 3,
+      "name": "multiple-files-error",
+      "prompt": "同时简化 /Users/kang/Documents/workspace/rebuild_data_flow/node/time_sync_node.py 和 /Users/kang/Documents/workspace/rebuild_data_flow/core/dag/base_node.py 两个文件",
+      "expected_output": "提示用户一次只能处理一个文件",
+      "files": ["node/time_sync_node.py", "core/dag/base_node.py"]
+    }
+  ]
+}
