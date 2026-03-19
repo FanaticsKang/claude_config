@@ -1,0 +1,23 @@
+{
+  "skill_name": "ask-me",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to add a new feature to my data pipeline - a validation stage that checks data quality before processing. You ask me.",
+      "expected_output": "The skill should ask 3-20 relevant questions about the validation feature, covering: what data quality checks are needed, where in the pipeline it should go, what happens when validation fails, performance considerations, etc.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I've modified the data_parser.py file to add error handling. What do you think?",
+      "expected_output": "The skill should ask about the intent behind the error handling changes, what errors it's meant to catch, why this particular approach was chosen, and point out any contradictions if the user's explanation is inconsistent.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Ask me questions about my project requirements",
+      "expected_output": "The skill should start with 3-20 questions covering: project goals, constraints, success criteria, timeline, resources, stakeholders, key features, etc.",
+      "files": []
+    }
+  ]
+}
