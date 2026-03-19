@@ -1,0 +1,52 @@
+{
+  "skill_name": "python-naming-convention",
+  "evals": [
+    {
+      "id": 1,
+      "name": "命名不匹配-需要修复",
+      "prompt": "检查文件 /Users/kang/Documents/workspace/rebuild_data_flow/node/msg_map_node.py 的命名规范，如果有问题请修复",
+      "expected_output": "检测到文件名 msg_map_node.py 与类名 EgoMsgMapNode 不匹配，应修复为 ego_msg_map_node.py",
+      "files": ["/Users/kang/Documents/workspace/rebuild_data_flow/node/msg_map_node.py"],
+      "assertions": [
+        {
+          "name": "检测到命名不匹配",
+          "type": "content_check",
+          "expected": "EgoMsgMapNode"
+        },
+        {
+          "name": "建议正确的文件名",
+          "type": "content_check",
+          "expected": "ego_msg_map_node.py"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "命名正确-无需修复",
+      "prompt": "创建一个测试文件，包含类 UserManager，文件名为 user_manager.py，然后检查命名规范",
+      "expected_output": "文件名与类名匹配，无需修复",
+      "files": [],
+      "assertions": [
+        {
+          "name": "确认命名正确",
+          "type": "content_check",
+          "expected": "符合"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "复杂类名转换",
+      "prompt": "检查一个包含类名 HTTPRequestHandler 的文件，当前文件名为 http_request_handler.py，验证转换是否正确",
+      "expected_output": "正确识别 HTTPRequestHandler 对应 http_request_handler.py",
+      "files": [],
+      "assertions": [
+        {
+          "name": "复杂类名正确转换",
+          "type": "content_check",
+          "expected": "http_request_handler.py"
+        }
+      ]
+    }
+  ]
+}

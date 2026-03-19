@@ -21,7 +21,12 @@
 
 **文件名**
 - 格式：小写字母 + 下划线，与文件内核心类名对应
-- 示例：类 `UserManager` → 文件 `user_manager.py`
+- 转换规则（PascalCase → snake_case）：
+  - `EgoMsgMapNode` → `ego_msg_map_node.py`
+  - `HttpRequestHandler` → `http_request_handler.py`
+  - `UserManager` → `user_manager.py`
+  - `APIGateway` → `api_gateway.py`
+  - `XMLParser` → `xml_parser.py`
 
 ### 2.2 优先检查与尽早返回（Prioritize Checks and Return Early）
 
