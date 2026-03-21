@@ -1,6 +1,6 @@
 ---
 name: ask-me
-description: Use when the user says "ask me", "you ask questions", or when creating plans/designs to ensure all design details are clarified. Also use after file modifications to understand the intent of changes. This skill ensures alignment through systematic questioning before proceeding with any work.
+description: Use when the user says "ask me", "you ask questions", or when creating plans/designs to ensure all design details are clarified. Also use after file modifications to understand the intent of changes. CRITICAL: Use when YOU (the AI) are confused, uncertain about how to proceed, or when the user's instructions are ambiguous or unclear — DO NOT guess, invoke this skill instead.
 ---
 
 # Ask Me Skill
@@ -14,6 +14,8 @@ Trigger this skill when:
 2. User is creating a plan or design solution and design details need clarification
 3. User has modified a file and the intent of changes should be understood
 4. Any situation where uncertainty exists about user intent
+5. **YOU (the AI) are confused**: You are unsure how to execute the task, don't understand the user's goal, or lack critical information — **do NOT guess, invoke this skill immediately**
+6. **User's instructions are unclear**: The request is ambiguous, missing key details, or can be interpreted in multiple significantly different ways
 
 ## Core Principles
 
@@ -56,6 +58,27 @@ When reviewing file changes:
 - Cover the main aspects of what needs to be understood
 - Continue with follow-up questions until alignment
 
+### When AI is Confused or Instructions are Unclear
+
+**This is a mandatory trigger — do NOT guess and proceed.** When you encounter any of the following, invoke this skill immediately:
+
+- You are unsure what the user wants you to do
+- The request has multiple plausible interpretations that lead to very different outcomes
+- Critical information is missing (scope, target file, expected behavior, constraints)
+- You find yourself about to make an assumption just to move forward
+
+**How to ask:**
+1. State concisely what you are confused about: "I'm unclear about X"
+2. If there are 2-3 distinct interpretations, list them explicitly and ask the user to choose
+3. If information is simply missing, ask the specific question needed
+
+**Example questions:**
+- "I'm not sure which files you want me to modify — did you mean A or B?"
+- "This could mean X or Y — which did you intend?"
+- "I'm missing [specific info] before I can proceed. Can you clarify?"
+
+**Anti-pattern to avoid:** Picking one interpretation, executing it, then asking "Is this what you meant?" — this wastes time and may cause unwanted changes.
+
 ## Handling User Responses
 
 ### Confirmation Signals (inferred alignment)
@@ -83,6 +106,7 @@ Stop when:
 
 ## Important Notes
 
+- **不要猜测再执行**：如果你不确定用户的意图，永远优先调用此 skill 提问，而不是假设一种解读然后执行。错误的执行比多问一个问题代价高得多。
 - This skill does NOT remember preferences across sessions - each conversation starts fresh
 - Be respectful of the user's time - ask focused, relevant questions
 - If the user seems frustrated or impatient, briefly explain why the question matters and move on
