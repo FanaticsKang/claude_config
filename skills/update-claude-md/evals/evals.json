@@ -1,0 +1,26 @@
+{
+  "skill_name": "update-claude-md",
+  "evals": [
+    {
+      "id": 1,
+      "name": "small-claude-md-consistency-check",
+      "prompt": "更新 CLAUDE.md，确保文档与项目状态一致",
+      "expected_output": "应读取项目文件，验证 CLAUDE.md 中的内容与实际项目结构一致，如发现不一致应报告问题",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "missing-claude-md",
+      "prompt": "我的项目没有 CLAUDE.md，请帮我创建/更新它",
+      "expected_output": "应检测到 CLAUDE.md 不存在，尝试调用 /init 或通知用户需要手动创建",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "large-claude-md-progressive-disclosure",
+      "prompt": "我的 CLAUDE.md 太长了，帮我优化一下",
+      "expected_output": "应检测到行数超过400，询问用户是否转换为渐进式披露格式",
+      "files": []
+    }
+  ]
+}
