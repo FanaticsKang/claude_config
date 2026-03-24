@@ -104,6 +104,68 @@ Stop when:
 3. All key design branches have been explored
 4. You receive an explicit "we're aligned" or similar
 
+## Interaction Tool: AskUserQuestion
+
+**AskUserQuestion** 是 skill 中与用户进行交互的主要工具（即"交互界面"）。
+
+### 工具功能
+
+- 向用户提出问题
+- 提供选项供用户选择（单选或多选）
+- 收集用户的偏好和决策
+- 支持预览模式（preview）展示可视化选项
+
+### 参数说明
+
+```yaml
+questions:
+  - question: "要问用户的问题"           # 问题文本，必须以问号结尾
+    header: "简短标签"                    # 最多12字符，显示为标签
+    options:                             # 选项列表，最多3个选项
+      - label: "选项标题"                 # 简短描述，1-5词
+        description: "详细说明"          # 解释此选项的含义
+        preview: "预览内容（可选）"       # 可视化展示的代码/界面
+    multiSelect: false                   # true=多选，false=单选
+```
+
+### 使用规则
+
+- **问题数量**：无限制
+- **选项数量**：每个问题最多 **3 个选项**
+- **自由输入**：每个问题都会自动提供 "Other" 选项，允许用户输入自定义答案
+
+### 使用示例
+
+```python
+# 单选问题示例
+AskUserQuestion(
+    questions=[{
+        "question": "Which logging framework should we use?",
+        "header": "Logging",
+        "options": [
+            {"label": "loguru", "description": "Modern, simple logging library"},
+            {"label": "logging", "description": "Python standard library"},
+            {"label": "structlog", "description": "Structured logging with context"}
+        ],
+        "multiSelect": False
+    }]
+)
+
+# 多选问题示例
+AskUserQuestion(
+    questions=[{
+        "question": "Which features do you want to enable?",
+        "header": "Features",
+        "options": [
+            {"label": "Caching", "description": "Add Redis caching layer"},
+            {"label": "Async", "description": "Make operations asynchronous"},
+            {"label": "Retry", "description": "Add automatic retry logic"}
+        ],
+        "multiSelect": True
+    }]
+)
+```
+
 ## Important Notes
 
 - **不要猜测再执行**：如果你不确定用户的意图，永远优先调用此 skill 提问，而不是假设一种解读然后执行。错误的执行比多问一个问题代价高得多。
