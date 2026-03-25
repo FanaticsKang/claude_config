@@ -104,54 +104,153 @@ Stop when:
 3. All key design branches have been explored
 4. You receive an explicit "we're aligned" or similar
 
+---
+
+## Complex Scenarios: Design Review Flow
+
+For complex design scenarios (multi-file changes, architecture decisions, new features), follow this structured review process:
+
+```mermaid
+flowchart TD
+    Start([Start: Invoke ask-me]) --> Context{Explore Context?}
+    Context -->|Complex scenario| Explore[Read files, check docs, recent commits]
+    Context -->|Simple clarification| Questions[Ask 3-20 questions]
+    Explore --> Questions
+
+    Questions --> Response{User Response}
+    Response -->|Clear confirmation| Check{Ambiguities Remain?}
+    Response -->|Uncertain/Vague| Questions
+    Response -->|Partial| FollowUp[Ask follow-up questions]
+
+    FollowUp --> Check
+
+    Check -->|Yes| Questions
+    Check -->|No| Complex{Is Complex Design?}
+
+    Complex -->|No| Align[Alignment Reached]
+    Complex -->|Yes| Review[Propose Review Summary]
+
+    Review --> UserConfirm{User Approves?}
+    UserConfirm -->|No| Questions
+    UserConfirm -->|Yes| Align
+
+    Align --> Exit([Proceed with work])
+```
+
+### Review Summary (Complex Scenarios Only)
+
+When handling complex designs, after alignment is reached, present a brief review summary:
+
+```
+## Review Summary
+
+**Understanding:**
+- [One sentence summary of what we're building]
+
+**Key Decisions:**
+- Decision 1: [brief description]
+- Decision 2: [brief description]
+- ...
+
+**Constraints:**
+- [List of key constraints identified]
+
+**Next Steps:**
+1. [First action item]
+2. [Second action item]
+```
+
+**When to use review summary:**
+- Multi-file modifications (3+ files)
+- Architecture-level changes
+- New feature implementations
+- Refactoring with design implications
+
+**When to skip review summary:**
+- Simple clarifications
+- Single-file edits
+- Bug fixes with clear scope
+- Configuration changes
+
+---
+
 ## Interaction Tool: AskUserQuestion
 
-**AskUserQuestion** 是 skill 中与用户进行交互的主要工具（即"交互界面"）。
+**AskUserQuestion** 是本 skill 与用户进行交互的主要工具。
 
 ### 工具功能
 
-- 向用户提出问题
-- 提供选项供用户选择（单选或多选）
-- 收集用户的偏好和决策
-- 支持预览模式（preview）展示可视化选项
+| 功能 | 说明 |
+|------|------|
+| 提问交互 | 向用户提出结构化问题 |
+| 选项选择 | 提供单选/多选选项（最多3个） |
+| 自由输入 | 自动提供 "Other" 选项允许用户输入自定义答案 |
+| 预览模式 | 支持 preview 字段展示可视化内容（代码/界面） |
+| 并行提问 | 支持一次提出多个问题（1-4个） |
 
 ### 参数说明
 
 ```yaml
 questions:
   - question: "要问用户的问题"           # 问题文本，必须以问号结尾
-    header: "简短标签"                    # 最多12字符，显示为标签
-    options:                             # 选项列表，最多3个选项
+    header: "简短标签"                    # 最多12字符，显示为芯片/标签样式
+    options:                             # 选项列表，2-3个选项
       - label: "选项标题"                 # 简短描述，1-5词
-        description: "详细说明"          # 解释此选项的含义
-        preview: "预览内容（可选）"       # 可视化展示的代码/界面
+        description: "详细说明"          # 解释此选项的含义和影响
+        preview: "预览内容（可选）"       # 可视化展示的代码/界面/图表
     multiSelect: false                   # true=多选，false=单选
 ```
 
 ### 使用规则
 
-- **问题数量**：无限制
-- **选项数量**：每个问题最多 **3 个选项**
-- **自由输入**：每个问题都会自动提供 "Other" 选项，允许用户输入自定义答案
+| 规则 | 说明 |
+|------|------|
+| **问题数量** | 每次 1-4 个问题 |
+| **选项数量** | 每个问题 **2-3 个选项**（自动添加 "Other"） |
+| **自由输入** | 每个问题自动提供 "Other" 选项 |
+| **Preview 支持** | 仅单选问题支持，触发侧边对比布局 |
+
+### 何时使用 AskUserQuestion vs 文本提问
+
+| 场景 | 推荐方式 |
+|------|----------|
+| 需要从 2-3 个明确选项中选择 | AskUserQuestion |
+| 多个相关问题需要一起决策 | AskUserQuestion（并行提问） |
+| 可视化对比（代码、UI布局） | AskUserQuestion + preview |
+| 开放式探索、理解背景 | 文本提问 |
+| 单一简单确认 | 文本提问 |
 
 ### 使用示例
 
+#### 示例 1: 单选问题（技术选型）
+
 ```python
-# 单选问题示例
 AskUserQuestion(
     questions=[{
         "question": "Which logging framework should we use?",
         "header": "Logging",
         "options": [
-            {"label": "loguru", "description": "Modern, simple logging library"},
-            {"label": "logging", "description": "Python standard library"},
-            {"label": "structlog", "description": "Structured logging with context"}
+            {
+                "label": "loguru",
+                "description": "Modern, simple logging library with less boilerplate"
+            },
+            {
+                "label": "logging",
+                "description": "Python standard library, zero dependencies"
+            },
+            {
+                "label": "structlog",
+                "description": "Structured logging with context, ideal for production"
+            }
         ],
         "multiSelect": False
     }]
 )
+```
 
-# 多选问题示例
+#### 示例 2: 多选问题（功能启用）
+
+```python
 AskUserQuestion(
     questions=[{
         "question": "Which features do you want to enable?",
@@ -165,6 +264,69 @@ AskUserQuestion(
     }]
 )
 ```
+
+#### 示例 3: 带 Preview 的单选（UI 布局对比）
+
+```python
+AskUserQuestion(
+    questions=[{
+        "question": "Which wizard layout works better for the setup flow?",
+        "header": "Layout",
+        "options": [
+            {
+                "label": "Single Page",
+                "description": "All steps on one scrollable page",
+                "preview": "┌─────────────────────┐\n│ Step 1             │\n├─────────────────────┤\n│ Step 2             │\n├─────────────────────┤\n│ Step 3             │\n└─────────────────────┘"
+            },
+            {
+                "label": "Multi Step",
+                "description": "One step per page with navigation",
+                "preview": "┌─────────────────────┐\n│ Step 1 of 3        │\n│ [Next →]           │\n└─────────────────────┘"
+            },
+            {
+                "label": "Accordion",
+                "description": "Expandable sections, progress visible",
+                "preview": "┌─────────────────────┐\n│ ▼ Step 1           │\n│   Step 2           │\n│   Step 3           │\n└─────────────────────┘"
+            }
+        ],
+        "multiSelect": False
+    }]
+)
+```
+
+#### 示例 4: 并行提问（多个相关决策）
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Should we include type hints in the codebase?",
+            "header": "Type Hints",
+            "options": [
+                {"label": "Yes", "description": "Add type hints for better IDE support"},
+                {"label": "No", "description": "Skip type hints for simplicity"}
+            ],
+            "multiSelect": False
+        },
+        {
+            "question": "Which testing framework do you prefer?",
+            "header": "Testing",
+            "options": [
+                {"label": "pytest", "description": "Modern, feature-rich testing framework"},
+                {"label": "unittest", "description": "Python standard library, no dependencies"}
+            ],
+            "multiSelect": False
+        }
+    ]
+)
+```
+
+### 最佳实践
+
+1. **推荐选项优先**：如果有一个明显更好的选择，将其放在第一位并标注 "(Recommended)"
+2. **Description 要具体**：说明选项的含义和权衡，不只是重复 label
+3. **Preview 用于可视化**：ASCII 图表、代码片段、UI mockup 等视觉内容
+4. **问题要完整**：确保问题本身包含足够上下文，用户不需要翻看聊天记录
 
 ## Important Notes
 

@@ -1,19 +1,17 @@
 {
-  "version": "1.0",
-  "agents": [
+  "version": "3.0",
+  "plugins": [
     {
-      "repo": "https://github.com/anthropics/claude-plugins-official",
-      "branch": "",
-      "path": "plugins/code-simplifier/agents",
-      "agents": ["code-simplifier"]
-    }
-  ],
-  "skills": [
+      "name": "claude-plugins-official",
+      "type": "official",
+      "plugins": []
+    },
     {
-      "repo": "https://github.com/anthropics/skills",
-      "branch": "",
-      "path": "",
-      "skills": ["skill-creator", "pdf"]
+      "name": "superpowers-marketplace",
+      "type": "marketplace",
+      "repo": "obra/superpowers-marketplace",
+      "agents": [],
+      "skills": []
     }
   ]
 }
