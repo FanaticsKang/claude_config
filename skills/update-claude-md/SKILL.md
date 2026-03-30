@@ -1,7 +1,6 @@
 ---
 name: update-claude-md
 description: 更新项目 CLAUDE.md 文档以保持与项目状态一致。当用户明确请求"更新CLAUDE.md"、"同步文档"、"刷新项目说明"、"检查文档一致性"或类似的明确指令时触发。也适用于项目结构发生重大变化后需要更新文档的场景。
-tools: Read, Glob, Grep, Edit, Write, Agent, AskUserQuestion
 ---
 
 # Update CLAUDE.md
@@ -16,10 +15,8 @@ tools: Read, Glob, Grep, Edit, Write, Agent, AskUserQuestion
 
 首先检查项目根目录是否存在 `CLAUDE.md` 文件。
 
-**如果不存在：**
-- 检查是否存在 `/init` 命令或 skill
-- 如果存在，调用 `/init` 生成初始的 CLAUDE.md
-- 如果不存在，通知用户需要手动创建或提供 CLAUDE.md 的模板
+**如果不存在 CLAUDE.md：**
+- 调用 `/init` 生成初始的 CLAUDE.md
 - 完成后继续执行步骤 2
 
 **如果存在：**
@@ -48,7 +45,6 @@ tools: Read, Glob, Grep, Edit, Write, Agent, AskUserQuestion
    - 推荐的文档分类：
      - `.claude/architecture.md` - 项目结构、模块说明
      - `.claude/config-guide.md` - 配置文件说明
-     - `.claude/node-dev-guide.md` - 节点开发指南
      - `.claude/data-schema.md` - 数据结构说明
      - 其他按需创建的专门文档
 
@@ -79,187 +75,77 @@ tools: Read, Glob, Grep, Edit, Write, Agent, AskUserQuestion
 
 完成转换后继续执行步骤 3。
 
-### 步骤 3: 分析项目结构并更新文档
+### 步骤 3: 检查内容一致性
 
 #### 步骤 3a: 构建项目文件清单
 
 使用 Glob 工具收集项目的主要文件：
 
-```python
-# 收集以下类型的文件
-- 项目根目录的 README.md, CLAUDE.md
-- .claude/ 目录下的所有 .md 文件
-- 主要源代码目录（通常为 src/, lib/, core/, 等）的 Python 文件
-- 配置文件（*.yaml, *.json, *.toml, 等）
-- tests/ 目录（如果存在）
+**收集以下类型的文件：**
+- 项目根目录的 README.md、CLAUDE.md
+- `.claude/` 目录下的所有 .md 文件
+- 主要源代码目录（通常为 src/、lib/、core/ 等）的源代码文件
+- 配置文件（*.yaml、*.json、*.toml 等）
 - 其他重要的文档或脚本文件
-```
 
-排除以下内容：
-- `__pycache__/, *.pyc, .git/, node_modules/,` 等构建/缓存目录
-- 虚拟环境目录（venv/, env/, .venv/）
+**排除以下内容：**
+- `__pycache__/`、`*.pyc`、`.git/`、`node_modules/` 等构建/缓存目录
+- 虚拟环境目录（venv/、env/、.venv/）
 
-#### 步骤 3b: 检查 CLAUDE.md 内容一致性（增强版）
+#### 步骤 3b: 执行一致性检查
 
-**如果 CLAUDE.md 使用渐进式披露（引用了 `.claude/` 下的文档）：**
+**1. 确定检查范围**
 
-1. **列出所有相关文档**：从 CLAUDE.md 中提取所有引用的 `.claude/*.md` 文件路径
+首先判断 CLAUDE.md 是否使用渐进式披露：
 
-2. **并行验证每个文档**：为每个文档启动一个独立的 sub-agent 进行验证
+- **如果使用渐进式披露**（引用了 `.claude/` 下的文档）：
+  - 从 CLAUDE.md 中提取所有引用的 `.claude/*.md` 文档路径
+  - 检查范围包括：CLAUDE.md + 所有引用的子文档
 
-   验证任务包括：
-   【原有验证】
-   - 读取文档内容
-   - 检查文档中提到的文件/目录/类/函数是否在项目中实际存在
-   - 检查文档中的路径是否正确
-   - 检查文档中的配置示例是否与实际配置文件匹配
-   - 检查文档中的代码示例是否符合项目实际代码风格
+- **如果是单一文件**（所有内容在 CLAUDE.md 中）：
+  - 检查范围仅为：CLAUDE.md 本身
 
-   【新增：遗漏性一致性检查】
-   - **配置文件同步检查**：自动发现项目中的配置文件（YAML/JSON/TOML/INI 等），检查配置字段是否在对应文档中说明
-   - **代码模式文档化检查**：自动识别源代码中的常见模式（如类型检查、错误处理、装饰器等），检查是否在开发指南中说明
+**2. 基础一致性检查**
 
-   输出格式：
-   ```json
-   {
-     "document": ".claude/architecture.md",
-     "status": "valid" | "needs_update",
-     "issues": [
-       {
-         "type": "missing_file" | "incorrect_path" | "outdated_content" | "missing_config_field" | "missing_code_pattern",
-         "severity": "error" | "warning",
-         "description": "详细描述问题",
-         "suggestion": "修复建议",
-         "location": "问题所在位置（可选）"
-       }
-     ]
-   }
-   ```
+对检查范围内的每个文档执行：
+- 检查文档中提到的文件/目录/类/函数是否在项目中实际存在
+- 检查文档中的路径是否正确
+- 检查文档中的配置示例是否与实际配置文件匹配
+- 检查文档中的代码示例是否符合项目实际代码风格
 
-3. **汇总验证结果**：
-   - 按严重程度排序问题（error > warning）
-   - 按问题类型分组展示
+**3. 遗漏性检查**
 
-**如果 CLAUDE.md 不使用渐进式披露（所有内容在单一文件中）：**
+- **配置文件同步检查**：自动发现项目中的配置文件（YAML/JSON/TOML/INI 等），检查配置字段是否在对应文档中说明
+- **代码模式文档化检查**：自动识别源代码中的常见模式（如类型检查、错误处理、装饰器等），检查是否在开发指南中说明
 
-直接执行以下验证：
-- 检查 CLAUDE.md 中提到的所有文件路径是否存在
-- 检查提到的目录结构是否正确
-- 检查提到的类名、函数名是否在代码中可以找到
-- 检查配置示例是否与实际配置匹配
+> 注：遗漏性检查的具体实现方法详见文末【附录：遗漏性一致性检查详解】
 
----
+**4. 并行验证（仅渐进式披露）**
 
-### 遗漏性一致性检查详解
+如果使用渐进式披露，为每个 `.claude/*.md` 文档启动独立的 sub-agent 进行验证，提高效率。
 
-#### 配置文件同步检查
+**输出格式：**
 
-**目的**：检测配置文件中定义但文档未说明的字段/选项。
-
-**自适应发现流程**：
-1. 使用 Glob 自动发现配置文件：`**/*.yaml`、`**/*.yml`、`**/*.json`、`**/*.toml`、`**/*.ini` 等
-2. 排除构建/缓存目录：`node_modules/`、`venv/`、`__pycache__/`、`.git/`
-3. 根据配置文件名自动匹配相关文档：
-   - 精确匹配：`settings.yaml` → `settings.md`、`config.md`
-   - 类型匹配：包含 "config" 关键词的文档
-   - 通用匹配：`.claude/config-guide.md`、`.claude/configuration.md`
-4. 提取配置字段，对比文档中是否说明
-
-**代码模式**：
-```python
-# 使用通配符自动发现，避免硬编码特定路径
-config_files = glob("**/*.{yaml,yml,json,toml,ini,conf,cfg}",
-                    exclude=["node_modules/**", "venv/**", "__pycache__/**", ".git/**"])
-```
-
-#### 代码模式文档化检查
-
-**目的**：检测源代码中使用但开发指南未说明的关键模式。
-
-**自适应发现流程**：
-1. 使用 Glob 自动发现源代码目录：`**/*.py`、`**/*.js`、`**/*.ts`、`src/`、`lib/`、`core/` 等
-2. 查找开发指南文档：`*guide*.md`、`*dev*.md`、`*tutorial*.md`、`.claude/node-dev-guide.md`
-3. 使用 Grep 扫描通用代码模式：
-   - 类型检查：`isinstance\(`
-   - 错误处理：`try:\s*\n.*except`
-   - 装饰器：`@\w+\s*\ndef`
-   - 上下文管理：`with .+:`
-   - 异步模式：`async def`
-4. 统计使用频率，检测高频率但未记录的模式
-
-**代码模式**：
-```python
-# 通用模式库，适用于多种编程语言
-COMMON_PATTERNS = {
-    "type_check": r"isinstance\(|typeof\s+",
-    "error_handling": r"try:\s*\n.*except|try\s*{",
-    "decorator": r"@\w+\s*\ndef",
-    "context_manager": r"with\s+\w+\s+as",
-    "async_pattern": r"async def |async\s+function",
+```json
+{
+  "document": "文档路径（如 .claude/architecture.md 或 CLAUDE.md）",
+  "status": "valid" | "needs_update",
+  "issues": [
+    {
+      "type": "missing_file" | "incorrect_path" | "outdated_content" | "missing_config_field" | "missing_code_pattern",
+      "severity": "error" | "warning",
+      "description": "详细描述问题",
+      "suggestion": "修复建议",
+      "location": "问题所在位置（可选）"
+    }
+  ]
 }
 ```
 
-#### 步骤 3.5: 输出质量报告并获取用户确认
+**5. 汇总验证结果**
 
-**在执行任何修改前，必须先输出质量报告。**
-
-##### 质量评分标准
-
-| 维度 | 权重 | 检查项 |
-|------|------|--------|
-| 路径准确性 | 20% | 文档中的路径是否存在 |
-| 配置同步性 | 20% | 配置字段是否完整记录 |
-| 代码模式覆盖 | 15% | 关键模式是否有文档 |
-| 结构清晰度 | 15% | 是否使用渐进式披露 |
-| 内容时效性 | 20% | 是否与当前代码一致 |
-| 可执行性 | 10% | 命令是否可直接运行 |
-
-**等级定义：**
-- **A (90-100)**: 优秀，文档完整且与项目完全同步
-- **B (75-89)**: 良好，存在小幅偏差或遗漏
-- **C (60-74)**: 及格，存在明显遗漏需要补充
-- **D (<60)**: 需要大幅更新
-
-##### 报告格式
-
-```markdown
-## CLAUDE.md 同步检查报告
-
-### 执行摘要
-- CLAUDE.md 行数：[N] 行
-- 质量等级：[A/B/C/D] ([分数]/100)
-- 验证的文档数量：[N] 个
-- 发现的问题：[N] 个 (error: N, warning: N)
-
-### 问题清单（按严重程度排序）
-
-#### Error 级别
-1. **[missing_file]** 文档: `.claude/architecture.md`
-   - 位置: 第 15 行
-   - 问题描述: 提到的 `src/flow/` 目录不存在，已重构为 `src/pipeline/`
-   - 修复建议: 将 `src/flow/` 更新为 `src/pipeline/`
-
-#### Warning 级别
-...
-
-### 建议的变更预览
-
-#### 更新: .claude/architecture.md
-**原因:** src/flow 目录已重构为 src/pipeline
-```diff
-- ## 流程模块
-- 项目包含 `src/flow/` 目录
-+ ## 管道模块
-+ 项目包含 `src/pipeline/` 目录
-```
-```
-
-##### 用户确认
-
-使用 AskUserQuestion 询问用户：
-- 是否同意执行所有建议的修复？
-- 或者选择性地修复某些问题？
-- 或者取消修改，仅查看报告？
+- 按严重程度排序问题（error > warning）
+- 按问题类型分组展示
 
 #### 步骤 3c: 更新文档
 
@@ -270,28 +156,30 @@ COMMON_PATTERNS = {
 3. **删除过时内容**：移除不再存在的文件/功能的描述
 4. **补充缺失内容**：添加已存在但未记录的重要信息
 
-更新原则：
+**更新原则：**
 - 保持文档简洁明了
 - 使用项目约定的语言（中文注释和文档）
 - 技术术语使用英文（如类名、函数名、命令）
 - 保持与项目 CLAUDE.md 中定义的代码风格一致
 
-### 步骤 4: 执行修改并报告
+### 步骤 4: 报告结果
 
-根据用户确认，执行步骤 3c 中定义的文档修改操作。
-
-执行完成后，输出执行结果：
+向用户报告执行结果：
 
 ```markdown
-## CLAUDE.md 更新执行报告
+## CLAUDE.md 更新报告
 
 ### 执行摘要
-- 已修复的 error: [N] 个
-- 已修复的 warning: [N] 个
-- 修改的文档: [列出文档路径]
+- CLAUDE.md 行数：[N] 行
+- 验证的文档数量：[N] 个
+- 发现的问题：[N] 个
+- 已修复的问题：[N] 个
 
-### 变更确认
-[简要确认已完成的修改]
+### 详细变更
+[列出每个文档的变更内容]
+
+### 建议
+[如果发现需要用户注意的问题，在此列出]
 ```
 
 ## 重要原则
@@ -317,24 +205,53 @@ COMMON_PATTERNS = {
 2. 变更列表
 3. 后续建议（如有）
 
-## 常见问题类型
+---
 
-检查时关注以下常见问题：
+## 附录：遗漏性一致性检查详解
 
-| 类型 | 检测方式 | 严重程度 |
-|------|----------|----------|
-| 过时路径 | 文档中的路径在项目中不存在 | error |
-| 缺失配置 | 配置文件中有字段但文档未说明 | warning |
-| 未记录模式 | 代码中高频使用的模式未在指南中记录 | warning |
-| 命令失效 | 文档中的命令无法正常运行 | error |
-| 结构混乱 | 单文件超过400行未使用渐进式披露 | warning |
+### 配置文件同步检查
 
-## 用户提示
+**目的**：检测配置文件中定义但文档未说明的字段/选项。
 
-向用户分享以下 CLAUDE.md 最佳实践：
+**自适应发现流程**：
+1. 使用 Glob 自动发现配置文件：`**/*.yaml`、`**/*.yml`、`**/*.json`、`**/*.toml`、`**/*.ini` 等
+2. 排除构建/缓存目录：`node_modules/`、`venv/`、`__pycache__/`、`.git/`
+3. 根据配置文件名自动匹配相关文档：
+   - 精确匹配：`settings.yaml` → `settings.md`、`config.md`
+   - 类型匹配：包含 "config" 关键词的文档
+   - 通用匹配：`.claude/config-guide.md`、`.claude/configuration.md` 等
+4. 提取配置字段，对比文档中是否说明
 
-- **渐进式披露**：大型项目应使用 `.claude/` 目录存放详细文档，CLAUDE.md 保持简洁
-- **保持简洁**：CLAUDE.md 应该是快速参考，不是百科全书
-- **定期同步**：项目结构变更后及时更新文档
-- **版本控制**：`.claude.local.md` 用于个人偏好，应加入 .gitignore
-- **可执行命令**：所有文档中的命令都应该可以直接复制运行
+**代码模式**：
+```python
+# 使用通配符自动发现，避免硬编码特定路径
+config_files = glob("**/*.{yaml,yml,json,toml,ini,conf,cfg}",
+                    exclude=["node_modules/**", "venv/**", "__pycache__/**", ".git/**"])
+```
+
+### 代码模式文档化检查
+
+**目的**：检测源代码中使用但开发指南未说明的关键模式。
+
+**自适应发现流程**：
+1. 使用 Glob 自动发现源代码目录：`**/*.py`、`**/*.js`、`**/*.ts`、`src/`、`lib/`、`core/` 等
+2. 查找开发指南文档：`*guide*.md`、`*dev*.md`、`*tutorial*.md`、`.claude/node-dev-guide.md`
+3. 使用 Grep 扫描通用代码模式：
+   - 类型检查：`isinstance\(`
+   - 错误处理：`try:\s*\n.*except`
+   - 装饰器：`@\w+\s*\ndef`
+   - 上下文管理：`with .+:`
+   - 异步模式：`async def`
+4. 统计使用频率，检测高频率但未记录的模式
+
+**代码模式**：
+```python
+# 通用模式库，适用于多种编程语言
+COMMON_PATTERNS = {
+    "type_check": r"isinstance\(|typeof\s+",
+    "error_handling": r"try:\s*\n.*except|try\s*{",
+    "decorator": r"@\w+\s*\ndef",
+    "context_manager": r"with\s+\w+\s+as",
+    "async_pattern": r"async def |async\s+function",
+}
+```
