@@ -18,91 +18,110 @@
 │
 ├── skills/                # 本地 Skills
 │
+├── special_skills/        # 特殊 Skills
+│
 ├── test/                  # 测试数据
 │
 ├── .gitignore             # Git 忽略文件
-├── install.sh             # 安装脚本
-├── remote_config.json     # 远程 agents/skills 配置
-├── uninstall.sh           # 卸载脚本
+├── gen_plugin_commands.py # 插件命令生成脚本
+├── plugin_commands.txt    # 生成的插件安装命令
+├── remote_config.json     # 远程插件配置 (v3.0)
 └── README.md              # 项目说明
 ```
 
 ## 安装
 
+### 1. 生成插件安装命令
+
 ```bash
-./install.sh
+python gen_plugin_commands.py
 ```
 
-安装脚本会将所有配置同步到 `~/.claude/` 目录下。
+脚本会读取 `remote_config.json` 配置，生成 Claude 插件安装命令并保存到 `plugin_commands.txt`。
 
-**安装输出示例：**
+**输出示例：**
 
 ```
-==========================================
-      Claude Config 安装工具
-==========================================
+===========================================================
+  Claude 插件安装命令生成器
+===========================================================
 
-=== [agents] ===
-  [未变] algorithm.md
-  [未变] architect.md
-  [未变] label_prompt_pro.md
+配置内容:
+  官方插件 (全部 19 个)
+  Marketplace: obra/superpowers-marketplace
 
-=== [commands] ===
-  [未变] check_new_code.md
-  [未变] git_summary.md
+生成的 Claude 命令:
+请复制以下命令到 Claude 中执行:
+
+  1. /plugin install agent-sdk-dev@claude-plugins-official
+  2. /plugin install clangd-lsp@claude-plugins-official
   ...
 
-=== [skills] ===
-  [未变] find-skills/
-  [修改] json_analysis/    # 内部文件有变更
-  [未变] skill-creator/
+===========================================================
+  共 20 条命令
+===========================================================
 
-==========================================
-              安装完成
-==========================================
-
-汇总统计:
-  新增: 0
-  修改: 1
-  删除: 0
-  未变: 15
+提示: 命令已保存到: plugin_commands.txt
 ```
 
-## 远程配置
+### 2. 执行安装
 
-`remote_config.json` 配置远程安装的 agents 和 skills：
+在 Claude Code 对话中，复制并执行 `plugin_commands.txt` 中的命令：
+
+```
+claude /plugin install superpowers@claude-plugins-official
+claude /plugin marketplace add obra/superpowers-marketplace
+```
+
+### 3. 安装本地组件
+
+将 `agents/`、`commands/`、`skills/` 目录复制到 `~/.claude/` 对应目录：
+
+```bash
+# 复制 agents
+rsync -av agents/ ~/.claude/agents/
+
+# 复制 commands
+rsync -av commands/ ~/.claude/commands/
+
+# 复制 skills
+rsync -av skills/ ~/.claude/skills/
+
+# 复制 CLAUDE.md
+cp claude_md_files/CLAUDE.md ~/.claude/
+```
+
+## remote_config.json 配置
+
+配置格式 v3.0：
 
 ```json
 {
-  "version": "1.0",
-  "agents": [
+  "version": "3.0",
+  "plugins": [
     {
-      "repo": "https://github.com/anthropics/claude-plugins-official",
-      "branch": "",
-      "path": "plugins/code-simplifier/agents",
-      "agents": ["code-simplifier"]
-    }
-  ],
-  "skills": [
+      "name": "claude-plugins-official",
+      "type": "official",
+      "plugins": []           // 空数组表示安装全部官方插件
+    },
     {
-      "repo": "https://github.com/anthropics/skills",
-      "branch": "",
-      "path": "",
-      "skills": ["skill-creator", "pdf"]
+      "name": "superpowers-marketplace",
+      "type": "marketplace",
+      "repo": "obra/superpowers-marketplace",
+      "agents": [],
+      "skills": []
     }
   ]
 }
 ```
 
-安装时会自动从配置的仓库克隆并安装到 `~/.claude/` 目录。
+**配置说明：**
 
-## 卸载
-
-```bash
-./uninstall.sh
-```
-
-卸载脚本会删除 `~/.claude/` 下的所有相关配置（包括本地和远程安装的组件）。
+| 字段 | 说明 |
+|-----|------|
+| `type: official` | Claude 官方插件 |
+| `type: marketplace` | GitHub Marketplace 插件 |
+| `plugins` | 空数组 = 安装全部，指定名称 = 选择性安装 |
 
 ## 组件说明
 
@@ -121,8 +140,6 @@
 | `/check_new_code` | 检查新代码是否符合编码规范 |
 | `/git_summary` | 总结 Git 提交历史 |
 | `/plot_in_vcs` | 使用 matplotlib 可视化 VCS 数据 |
-| `/prompt_check_input_follow_LLM` | 分析输入对 LLM 的适配性 |
-| `/prompt_check_task_follow_LLM` | 分析任务对 LLM 的适配性 |
 | `/simplify_your_code` | 简化代码，提升可读性 |
 | `/summary_and_commit` | 自动总结并提交 Git 更改 |
 
@@ -130,15 +147,14 @@
 
 | Skill | 用途 | 类型 |
 |-------|------|------|
-| `find-skills` | 帮助发现和安装可用的 skills | 本地 |
-| `git-email-rewrite` | 修改 Git 提交历史中的邮箱地址 | 本地 |
 | `json_analysis` | 分析大型 JSON 文件结构，生成文档 | 本地 |
 | `pdf` | PDF 文件处理（读取、合并、拆分等） | 远程 |
 | `skill-creator` | 创建、测试和优化 skills | 远程 |
+| `superpowers` | 开发工作流增强技能集 | 远程 |
 
 **说明：**
 - **本地**：位于 `skills/` 目录，随仓库一起管理
-- **远程**：通过 `remote_config.json` 配置，安装时从外部仓库获取
+- **远程**：通过 `/plugin install` 安装
 
 ## CLAUDE.md 配置
 
@@ -151,8 +167,8 @@
 ## 依赖
 
 - Claude Code CLI
-- Python 3.x（用于部分 skills 脚本）
-- rsync（用于 install.sh）
+- Python 3.x（用于 gen_plugin_commands.py）
+- rsync（用于本地组件同步）
 
 ## License
 
