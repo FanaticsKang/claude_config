@@ -1,10 +1,30 @@
 {
   "version": "3.0",
+  "_comment": "排除的插件: csharp-lsp, gopls-lsp, hookify, jdtls-lsp, kotlin-lsp, lua-lsp, math-olympiad, mcp-server-dev, php-lsp, ruby-lsp, rust-analyzer-lsp, security-guidance, swift-lsp, typescript-lsp",
   "plugins": [
     {
       "name": "claude-plugins-official",
       "type": "official",
-      "plugins": []
+      "plugins": [
+        "agent-sdk-dev",
+        "clangd-lsp",
+        "claude-code-setup",
+        "claude-md-management",
+        "code-review",
+        "code-simplifier",
+        "commit-commands",
+        "example-plugin",
+        "explanatory-output-style",
+        "feature-dev",
+        "frontend-design",
+        "learning-output-style",
+        "playground",
+        "plugin-dev",
+        "pr-review-toolkit",
+        "pyright-lsp",
+        "ralph-loop",
+        "skill-creator"
+      ]
     },
     {
       "name": "superpowers-marketplace",

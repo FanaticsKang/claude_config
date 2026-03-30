@@ -23,57 +23,49 @@
 ├── test/                  # 测试数据
 │
 ├── .gitignore             # Git 忽略文件
-├── gen_plugin_commands.py # 插件命令生成脚本
-├── plugin_commands.txt    # 生成的插件安装命令
+├── install.sh             # 安装脚本
 ├── remote_config.json     # 远程插件配置 (v3.0)
 └── README.md              # 项目说明
 ```
 
 ## 安装
 
-### 1. 生成插件安装命令
+### 1. 同步本地组件
 
 ```bash
-python gen_plugin_commands.py
+./install.sh
 ```
 
-脚本会读取 `remote_config.json` 配置，生成 Claude 插件安装命令并保存到 `plugin_commands.txt`。
+脚本会同步 agents、commands、skills 和 CLAUDE.md 到 `~/.claude/` 目录。
 
-**输出示例：**
+### 2. 安装插件
 
+在 Claude Code 对话中执行以下命令：
+
+```bash
+# 官方插件（18个）
+/plugin install agent-sdk-dev@claude-plugins-official
+/plugin install clangd-lsp@claude-plugins-official
+/plugin install claude-code-setup@claude-plugins-official
+/plugin install claude-md-management@claude-plugins-official
+/plugin install code-review@claude-plugins-official
+/plugin install code-simplifier@claude-plugins-official
+/plugin install commit-commands@claude-plugins-official
+/plugin install example-plugin@claude-plugins-official
+/plugin install explanatory-output-style@claude-plugins-official
+/plugin install feature-dev@claude-plugins-official
+/plugin install frontend-design@claude-plugins-official
+/plugin install learning-output-style@claude-plugins-official
+/plugin install playground@claude-plugins-official
+/plugin install plugin-dev@claude-plugins-official
+/plugin install pr-review-toolkit@claude-plugins-official
+/plugin install pyright-lsp@claude-plugins-official
+/plugin install ralph-loop@claude-plugins-official
+/plugin install skill-creator@claude-plugins-official
+
+# Marketplace
+/plugin marketplace add obra/superpowers-marketplace
 ```
-===========================================================
-  Claude 插件安装命令生成器
-===========================================================
-
-配置内容:
-  官方插件 (全部 19 个)
-  Marketplace: obra/superpowers-marketplace
-
-生成的 Claude 命令:
-请复制以下命令到 Claude 中执行:
-
-  1. /plugin install agent-sdk-dev@claude-plugins-official
-  2. /plugin install clangd-lsp@claude-plugins-official
-  ...
-
-===========================================================
-  共 20 条命令
-===========================================================
-
-提示: 命令已保存到: plugin_commands.txt
-```
-
-### 2. 执行安装
-
-在 Claude Code 对话中，复制并执行 `plugin_commands.txt` 中的命令：
-
-```
-claude /plugin install superpowers@claude-plugins-official
-claude /plugin marketplace add obra/superpowers-marketplace
-```
-
-### 3. 安装本地组件
 
 将 `agents/`、`commands/`、`skills/` 目录复制到 `~/.claude/` 对应目录：
 
@@ -167,8 +159,7 @@ cp claude_md_files/CLAUDE.md ~/.claude/
 ## 依赖
 
 - Claude Code CLI
-- Python 3.x（用于 gen_plugin_commands.py）
-- rsync（用于本地组件同步）
+- rsync（用于 install.sh）
 
 ## License
 
