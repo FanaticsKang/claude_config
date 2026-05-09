@@ -1,337 +1,87 @@
 ---
 name: ask-me
-description: Use when the user says "ask me", "you ask questions", or when creating plans/designs to ensure all design details are clarified. Also use after file modifications to understand the intent of changes. CRITICAL: Use when YOU (the AI) are confused, uncertain about how to proceed, or when the user's instructions are ambiguous or unclear — DO NOT guess, invoke this skill instead.
+description: 当用户说"你来问我"、"ask me"时触发。第一次创建方案或设计时触发。修改文件后用于理解变更意图。关键：当你（AI）感到困惑、不确定如何执行、或指令有歧义时——不要猜测，立即调用此skill。当你觉得方案有多种执行的可能，你从中挑选了一种的时候，立刻调用此skill确认你的选择是否正确。
 ---
 
 # Ask Me Skill
 
-A skill for systematic questioning to ensure alignment before proceeding with work.
+系统化提问以确保执行前达成共识。
 
-## When to Use This Skill
+## 提问原则
 
-Trigger this skill when:
-1. User explicitly says "ask me", "you ask me questions", or similar phrases
-2. User is creating a plan or design solution and design details need clarification
-3. User has modified a file and the intent of changes should be understood
-4. Any situation where uncertainty exists about user intent
-5. **YOU (the AI) are confused**: You are unsure how to execute the task, don't understand the user's goal, or lack critical information — **do NOT guess, invoke this skill immediately**
-6. **User's instructions are unclear**: The request is ambiguous, missing key details, or can be interpreted in multiple significantly different ways
+- **首轮**提 3–20 个问题，后续轮次持续提问直到对齐
+- 检测到矛盾时**立即**指出，不要等到后面
+- 用户给出明确确认（"对"、"就是这个"）时推断为已对齐；回应模糊时显式询问"我们是否对齐？"
 
-## Core Principles
+## AI 困惑时如何提问
 
-1. **Question Iteratively**: Ask questions until alignment is reached
-2. **First Round Questions**: Ask between 3-20 questions in the first round (when no prior questioning context exists)
-3. **Continuous Questioning**: Continue questioning in subsequent rounds until intent is fully understood
-4. **Hybrid Alignment Detection**: Infer alignment when the user gives clear confirmation (yes, correct, that's right), but explicitly ask "Are we aligned?" when uncertain
+1. 说明困惑点："我不确定 X"
+2. 如有 2–3 种明显不同的解读，列出并让用户选择
+3. 如缺少关键信息，直接问
 
-## Questioning Strategy
+**反模式**：选一种解读先执行，再问"这是你想要的吗？"——浪费时间且可能造成不必要的改动。
 
-### For Plans and Designs
+## 停止提问的条件
 
-When the user is creating a plan or design:
-- Explore the full branch of the design tree
-- Ask about specific implementation details
-- Clarify edge cases and constraints
-- Understand success criteria
+- 用户给出清晰、一致的确认
+- 无重大歧义残留
+- 所有关键设计分支已探明
 
-**Example questions:**
-- What are the key constraints for this solution?
-- Which parts of the design are flexible vs. fixed?
-- What does success look like for this implementation?
-- Are there edge cases we should consider?
+## 复杂场景：对齐后输出 Review Summary
 
-### For File Modifications
+**适用于**：多文件修改（3+ 个文件）、架构级变更、新功能实现、有设计影响的重构。
 
-When reviewing file changes:
-- Focus on significant changes (ignore whitespace and minor style edits)
-- Ask about the intent behind each meaningful modification
-- Point out contradictions immediately if detected
-
-**Example questions:**
-- What was the reason for modifying this function?
-- Why was this particular approach chosen?
-- I see you changed X here, but earlier you mentioned Y - can you clarify?
-
-### When User Says "Ask Me"
-
-- Start with 3-20 relevant questions based on context
-- Cover the main aspects of what needs to be understood
-- Continue with follow-up questions until alignment
-
-### When AI is Confused or Instructions are Unclear
-
-**This is a mandatory trigger — do NOT guess and proceed.** When you encounter any of the following, invoke this skill immediately:
-
-- You are unsure what the user wants you to do
-- The request has multiple plausible interpretations that lead to very different outcomes
-- Critical information is missing (scope, target file, expected behavior, constraints)
-- You find yourself about to make an assumption just to move forward
-
-**How to ask:**
-1. State concisely what you are confused about: "I'm unclear about X"
-2. If there are 2-3 distinct interpretations, list them explicitly and ask the user to choose
-3. If information is simply missing, ask the specific question needed
-
-**Example questions:**
-- "I'm not sure which files you want me to modify — did you mean A or B?"
-- "This could mean X or Y — which did you intend?"
-- "I'm missing [specific info] before I can proceed. Can you clarify?"
-
-**Anti-pattern to avoid:** Picking one interpretation, executing it, then asking "Is this what you meant?" — this wastes time and may cause unwanted changes.
-
-## Handling User Responses
-
-### Confirmation Signals (inferred alignment)
-- "Yes", "correct", "that's right", "exactly"
-- "Agreed", "sounds good", "that works"
-- Nod emojis or clear affirmative statements
-
-### Uncertainty Signals (explicit alignment check needed)
-- "I think so", "maybe", "not sure"
-- "Hmm", "let me think", vague responses
-- Partial or qualified agreement ("yes, but...")
-- Any response that leaves ambiguity
-
-### Contradictions
-- **Point out immediately**: If you detect a contradiction in the user's responses, flag it right away
-- Example: "Earlier you mentioned X, but now you're saying Y. Can you help me understand how these fit together?"
-
-## When to Stop Questioning
-
-Stop when:
-1. User gives clear, consistent confirmation signals
-2. No significant ambiguities remain
-3. All key design branches have been explored
-4. You receive an explicit "we're aligned" or similar
-
----
-
-## Complex Scenarios: Design Review Flow
-
-For complex design scenarios (multi-file changes, architecture decisions, new features), follow this structured review process:
-
-```mermaid
-flowchart TD
-    Start([Start: Invoke ask-me]) --> Context{Explore Context?}
-    Context -->|Complex scenario| Explore[Read files, check docs, recent commits]
-    Context -->|Simple clarification| Questions[Ask 3-20 questions]
-    Explore --> Questions
-
-    Questions --> Response{User Response}
-    Response -->|Clear confirmation| Check{Ambiguities Remain?}
-    Response -->|Uncertain/Vague| Questions
-    Response -->|Partial| FollowUp[Ask follow-up questions]
-
-    FollowUp --> Check
-
-    Check -->|Yes| Questions
-    Check -->|No| Complex{Is Complex Design?}
-
-    Complex -->|No| Align[Alignment Reached]
-    Complex -->|Yes| Review[Propose Review Summary]
-
-    Review --> UserConfirm{User Approves?}
-    UserConfirm -->|No| Questions
-    UserConfirm -->|Yes| Align
-
-    Align --> Exit([Proceed with work])
-```
-
-### Review Summary (Complex Scenarios Only)
-
-When handling complex designs, after alignment is reached, present a brief review summary:
+**跳过的情况**：简单澄清、单文件编辑、范围明确的 bugfix、配置变更。
 
 ```
 ## Review Summary
 
-**Understanding:**
-- [One sentence summary of what we're building]
-
-**Key Decisions:**
-- Decision 1: [brief description]
-- Decision 2: [brief description]
-- ...
-
-**Constraints:**
-- [List of key constraints identified]
-
-**Next Steps:**
-1. [First action item]
-2. [Second action item]
+**理解：** [一句话概括要做什么]
+**关键决策：** [决策列表]
+**约束条件：** [约束列表]
+**下一步：** [行动项]
 ```
 
-**When to use review summary:**
-- Multi-file modifications (3+ files)
-- Architecture-level changes
-- New feature implementations
-- Refactoring with design implications
+## 工具：AskUserQuestion
 
-**When to skip review summary:**
-- Simple clarifications
-- Single-file edits
-- Bug fixes with clear scope
-- Configuration changes
+每次调用可并行提 **1–4 个问题**，每个问题 **2–3 个选项**（自动附加"其他"）。
 
----
-
-## Interaction Tool: AskUserQuestion
-
-**AskUserQuestion** 是本 skill 与用户进行交互的主要工具。
-
-### 工具功能
-
-| 功能 | 说明 |
+| 参数 | 说明 |
 |------|------|
-| 提问交互 | 向用户提出结构化问题 |
-| 选项选择 | 提供单选/多选选项（最多3个） |
-| 自由输入 | 自动提供 "Other" 选项允许用户输入自定义答案 |
-| 预览模式 | 支持 preview 字段展示可视化内容（代码/界面） |
-| 并行提问 | 支持一次提出多个问题（1-4个） |
+| `question` | 问题文本，以问号结尾 |
+| `header` | 最多 12 字符的标签 |
+| `options` | 2–3 个选项，含 `label` 和 `description` |
+| `multiSelect` | `true` = 多选，`false` = 单选 |
+| `preview` | 可选，仅单选支持，展示 ASCII 图/代码对比 |
 
-### 参数说明
+**用 AskUserQuestion 的场景**：从明确选项中选择、多个相关决策、需要可视化对比。
 
-```yaml
-questions:
-  - question: "要问用户的问题"           # 问题文本，必须以问号结尾
-    header: "简短标签"                    # 最多12字符，显示为芯片/标签样式
-    options:                             # 选项列表，2-3个选项
-      - label: "选项标题"                 # 简短描述，1-5词
-        description: "详细说明"          # 解释此选项的含义和影响
-        preview: "预览内容（可选）"       # 可视化展示的代码/界面/图表
-    multiSelect: false                   # true=多选，false=单选
-```
+**用文字提问的场景**：开放探索、单一简单确认。
 
-### 使用规则
-
-| 规则 | 说明 |
-|------|------|
-| **问题数量** | 每次 1-4 个问题 |
-| **选项数量** | 每个问题 **2-3 个选项**（自动添加 "Other"） |
-| **自由输入** | 每个问题自动提供 "Other" 选项 |
-| **Preview 支持** | 仅单选问题支持，触发侧边对比布局 |
-
-### 何时使用 AskUserQuestion vs 文本提问
-
-| 场景 | 推荐方式 |
-|------|----------|
-| 需要从 2-3 个明确选项中选择 | AskUserQuestion |
-| 多个相关问题需要一起决策 | AskUserQuestion（并行提问） |
-| 可视化对比（代码、UI布局） | AskUserQuestion + preview |
-| 开放式探索、理解背景 | 文本提问 |
-| 单一简单确认 | 文本提问 |
-
-### 使用示例
-
-#### 示例 1: 单选问题（技术选型）
-
-```python
-AskUserQuestion(
-    questions=[{
-        "question": "Which logging framework should we use?",
-        "header": "Logging",
-        "options": [
-            {
-                "label": "loguru",
-                "description": "Modern, simple logging library with less boilerplate"
-            },
-            {
-                "label": "logging",
-                "description": "Python standard library, zero dependencies"
-            },
-            {
-                "label": "structlog",
-                "description": "Structured logging with context, ideal for production"
-            }
-        ],
-        "multiSelect": False
-    }]
-)
-```
-
-#### 示例 2: 多选问题（功能启用）
-
-```python
-AskUserQuestion(
-    questions=[{
-        "question": "Which features do you want to enable?",
-        "header": "Features",
-        "options": [
-            {"label": "Caching", "description": "Add Redis caching layer"},
-            {"label": "Async", "description": "Make operations asynchronous"},
-            {"label": "Retry", "description": "Add automatic retry logic"}
-        ],
-        "multiSelect": True
-    }]
-)
-```
-
-#### 示例 3: 带 Preview 的单选（UI 布局对比）
-
-```python
-AskUserQuestion(
-    questions=[{
-        "question": "Which wizard layout works better for the setup flow?",
-        "header": "Layout",
-        "options": [
-            {
-                "label": "Single Page",
-                "description": "All steps on one scrollable page",
-                "preview": "┌─────────────────────┐\n│ Step 1             │\n├─────────────────────┤\n│ Step 2             │\n├─────────────────────┤\n│ Step 3             │\n└─────────────────────┘"
-            },
-            {
-                "label": "Multi Step",
-                "description": "One step per page with navigation",
-                "preview": "┌─────────────────────┐\n│ Step 1 of 3        │\n│ [Next →]           │\n└─────────────────────┘"
-            },
-            {
-                "label": "Accordion",
-                "description": "Expandable sections, progress visible",
-                "preview": "┌─────────────────────┐\n│ ▼ Step 1           │\n│   Step 2           │\n│   Step 3           │\n└─────────────────────┘"
-            }
-        ],
-        "multiSelect": False
-    }]
-)
-```
-
-#### 示例 4: 并行提问（多个相关决策）
+### 示例：并行提问
 
 ```python
 AskUserQuestion(
     questions=[
         {
-            "question": "Should we include type hints in the codebase?",
-            "header": "Type Hints",
+            "question": "日志库用哪个？",
+            "header": "日志",
             "options": [
-                {"label": "Yes", "description": "Add type hints for better IDE support"},
-                {"label": "No", "description": "Skip type hints for simplicity"}
+                {"label": "loguru", "description": "现代简洁，样板代码少"},
+                {"label": "logging", "description": "标准库，零依赖"},
+                {"label": "structlog", "description": "结构化日志，适合生产环境"}
             ],
             "multiSelect": False
         },
         {
-            "question": "Which testing framework do you prefer?",
-            "header": "Testing",
+            "question": "测试框架用哪个？",
+            "header": "测试",
             "options": [
-                {"label": "pytest", "description": "Modern, feature-rich testing framework"},
-                {"label": "unittest", "description": "Python standard library, no dependencies"}
+                {"label": "pytest", "description": "功能丰富，生态完善"},
+                {"label": "unittest", "description": "标准库，无额外依赖"}
             ],
             "multiSelect": False
         }
     ]
 )
 ```
-
-### 最佳实践
-
-1. **推荐选项优先**：如果有一个明显更好的选择，将其放在第一位并标注 "(Recommended)"
-2. **Description 要具体**：说明选项的含义和权衡，不只是重复 label
-3. **Preview 用于可视化**：ASCII 图表、代码片段、UI mockup 等视觉内容
-4. **问题要完整**：确保问题本身包含足够上下文，用户不需要翻看聊天记录
-
-## Important Notes
-
-- **不要猜测再执行**：如果你不确定用户的意图，永远优先调用此 skill 提问，而不是假设一种解读然后执行。错误的执行比多问一个问题代价高得多。
-- This skill does NOT remember preferences across sessions - each conversation starts fresh
-- Be respectful of the user's time - ask focused, relevant questions
-- If the user seems frustrated or impatient, briefly explain why the question matters and move on
-- Adapt question count based on complexity - simpler tasks need fewer questions
